@@ -1,0 +1,1315 @@
+It’s All Connected: A Journey Through Test-Time Memorization,
+Attentional Bias, Retention, and Online Optimization
+Ali Behrouz†, Meisam Razaviyayn†, Peilin Zhong†, and Vahab Mirrokni†
+†Google Research
+{alibehrouz, razaviyayn, peilinz, mirrokni}@google.com
+Abstract
+Designing efficient and effective architectural backbones has been in the core of research efforts to enhance the
+capability of foundation models. Inspired by the human cognitive phenomenon of attentional bias—the natural tendency to
+prioritize certain events or stimuli—we reconceptualize neural architectures, including Transformers, Titans, and modern
+linear recurrent neural networks as associative memory modules that learn a mapping of keys and values using an internal
+objective, referred to as attentional bias . Surprisingly, we observed that most existing sequence models leverage either
+(1) dot-product similarity, or (2) ℓ2regression objectives as their attentional bias. Going beyond these objectives, we
+present a set of alternative attentional bias configurations along with their effective approximations to stabilize their
+training procedure. We then reinterpret forgetting mechanisms in modern deep learning architectures as a form of
+retention regularization, providing a novel set of forget gates for sequence models. Building upon these insights, we
+present Miras , a general framework to design deep learning architectures based on four choices of: (i) associative memory
+architecture, (ii) attentional bias objective, (iii) retention gate, and (iv) memory learning algorithm. We present three novel
+sequence models— Moneta ,Yaad , and Memora —that go beyond the power of existing linear RNNs while maintaining a
+fast parallelizable training process. Our experiments show different design choices in Miras yield models with varying
+strengths. For example, certain instances of Miras achieve exceptional performance in special tasks such as language
+modeling, commonsense reasoning, and recall intensive tasks, even outperforming Transformers and other modern linear
+recurrent models.
+1 Introduction
+Designing efficient architectural backbones for sequence modeling is a key to enhance the capability of foundation models
+in domains ranging from language (Behrouz et al. 2024c; Vaswani et al. 2017a) and computer vision (Dosovitskiy et al.
+2020) to computational biology (Wang et al. 2024) and neuroscience (Behrouz et al. 2024a). While Transformers (Vaswani
+et al. 2017a), mainly due to their in-context learning and ability to learn at scale (Kaplan et al. 2020), have been firmly
+established as state-of-the-art (SOTA) models in sequence modeling, their quadratic time and space complexity limits their
+applicability in tasks that require long context modeling (Dalal et al. 2025; Li et al. 2024a; Liu et al. 2024b).
+Recent efforts aim to overcome Transformer limitations in long-context modeling by designing efficient recurrent alterna-
+tives (Behrouz et al. 2024c; Neil et al. 2017; Smith et al. 2022). Unlike Transformer’s linearly growing memory (i.e., the
+KV cache), these models compress the context into a fixed size memory, demanding improved memory management for
+comparable performance. To design more effective architectures, studies focus on improving memory capacity and its
+management by using/designing more expressive: (1) Learning rules: from Hebbian rule (Hebb 2005) to Delta rule (Neil
+et al. 2017); (2) Forget gates: from LSTM’s (Schmidhuber et al. 1997) to Mamba2’s (Dao et al. 2024) and then Titan’s forget
+gates (Behrouz et al. 2024c); and (3) More expressive memory architectures: from vector-valued memory in RetNet (Sun
+et al. 2023) and LRU (Orvieto et al. 2023) to neural deep memory in Titans (Behrouz et al. 2024c) and TTT (Sun et al.
+2024).
+At the core of these advancements lies a critical question: “what is the underlying design framework behind these sequence
+models, and how can these models be enhanced?”. Taking inspiration from the broad definitions of associative memory and
+learning in neuropsychology literature (Okano et al. 2000), several studies discuss the connection between Transformers
+1arXiv:2504.13173v1  [cs.LG]  17 Apr 2025
+
+and (linear) Recurrent Neural Networks (RNNs) with associative memory (Bietti et al. 2023; Hopfield 1982; Ramsauer et al.
+2021). These studies, however, either: (1) lack a universal explanation to fully illustrate the underlying learning algorithms,
+(2) are limited to a specific definition of associative memory and lack generalizability, and/or (3) are unable to describe
+standard, widely used components such as forget gate.
+Contributions. Inspired by the human cognitive phenomenon of attentional bias—the natural tendency to prioritize
+certain events or stimuli—we re-conceptualize neural architectures, including Transformers, Titans, and other modern
+linear recurrent neural networks based on a broad definition of associative memory with attentional bias . We define and
+formalize the concept of attentional bias as the internal memory objective of sequence models (see Section 3) that aims
+to learn the underlying mapping between inputs (i.e., keys and values). Our formulation reveals that almost all existing
+sequence models are associative memories that leverage the same type of attentional bias. We reinterpret existing forgetting
+mechanisms in modern deep learning architectures as a form of retentionℓ2-regularization for the attentional bias, and
+then provide a novel set of alternative retention gates (forget gate) for sequence models, providing new insights on how to
+balance learning new concepts and the retention of previously learned concepts.
+Building upon our formulation of memory and forget gate, we present Miras1, a fundamental framework to design novel
+sequence modeling architectures by four choice of: (1) Attentional bias (i.e., memory objective), (2) Retention gate, (3)
+Memory architecture, and (4) Memory learning algorithm (i.e., optimizer). We motivate and discuss several novel design
+choices, leading to novel architectures beyond existing sequence modeling architectures.
+Finally, we focus on three novel variants of Miras —Moneta ,Yaad , and Memora —that are based on attentional biases
+beyond simple ℓ2-regression objective as well as novel retention gating mechanisms that are more robust than existing
+ones. We further perform experimental evaluations of these three variants on language modeling, common-sense rea-
+soning, needle-in-haystack, and recall intensive tasks. The results illustrates the superior performance of these variants,
+outperforming state-of-the-art sequence models.
+Roadmap. In Section 2, we review literature and discuss relevant concepts that we use through the paper. In Section 3,
+we present and discuss the broad definition of associative memory with formally defining the concept of attentional bias .
+We then discuss two viewpoints—Learning-Retaining and Follow-the-Regularized-Leader (FTRL)—to interpret sequence
+modeling through the lens of optimization and prove the generality of Learning-Retaining over FTRL. In Section 4, we
+present our Miras framework and discuss how it unifies modern sequence models. In Section 5, to show the potential of
+Miras framework, we discuss a variety of novel design choices for (1) attentional bias, and (2) retention gate (forget gate).
+Later in Section 5.3, we present three novel sequence models as the variants of Miras , and then discuss how to train them
+in a parallelizable manner. Finally, our experimental evaluations are reported in Section 6.
+2 Preliminaries and Background
+In this section, we review the related studies and background concepts that we use through the paper.
+Attention. Attention as the backbone of Transformers is a critical component that acts as their associative memory (Bietti
+et al. 2023). Given input 𝑥∈R𝑁×𝑑in, causal attention computes output y∈R𝑁×𝑑inbased on Softmax over input dependent
+key, value, and query matrices:
+Q=𝑥WQ, K=𝑥WK, V=𝑥WV, (1)
+y𝑖=𝑖∑︁
+𝑗=1exp
+q⊤
+𝑖k𝑗/√𝑑in
+v𝑗
+Í𝑖
+ℓ=1exp
+q⊤
+𝑖kℓ/√𝑑in, (2)
+where WQ,WK,andWV∈R𝑑in×𝑑inare learnable parameters. While Transformers achieve significant improvements
+compared to traditional Recurrent Neural Networks (RNNs)—such as LSTM (Schmidhuber et al. 1997), their complexity
+that requires at least 𝑁×𝑑operators to calculate the output has been the main motivation for researchers to think about
+alternative architectures. We divide and review the research efforts to design alternative architectures into two groups: (1)
+Linear shallow memory recurrent models, (2) Deep memory modules.
+1“Miras” is the translation of “Legacy” in several languages: such as Persian, Arabic, and Turkish. We choose this name since this framework provides
+clear steps for future studies to design powerful sequence models based on their task at hand.
+2
+
+Figure 1: The overview of Miras framework. Miras is based on four critical choices of (1) memory architecture, (2)
+attentional bias, (3) retention gate, and (4) memory learning algorithm. In this framework, the memory architecture
+determines the model capacity to memorize; attentional bias is responsible for modeling the underlying mapping patterns;
+retention gate determines how to balance learning new concepts and the retention of previously learned concepts; and
+memory learning algorithm is responsible for memory management.
+(Linear) Recurrent Models. For many years, non-linear (gated) recurrent neural networks had been the de facto
+architectural backbones in deep learning (Greff et al. 2016). Their recurrent nature, however, results in non-parallelizable
+training, making their large scale training infeasible. To this end, in recent years, linear RNNs as alternatives to both
+Transformers and non-linear RNNs attract much attention mainly due to their parallelizable and linear-time training
+while maintaining competitive performance (Peng et al. 2025a; Sun et al. 2023; Yang et al. 2024c). Earlier variants of linear
+RNNs (De et al. 2024; Sun et al. 2023; Yang et al. 2024b), which mostly are based on Hebbian learning rule (Hebb 2005), aim
+to compress the data into their vector-valued (or matrix-valued) memory (De et al. 2024; Katharopoulos et al. 2020; Liu
+et al. 2024a; Sun et al. 2023; Yang et al. 2024b). Let M𝑡∈R𝑑×𝑛be the memory ( 𝑛=1means vector-valued memory), and
+k,v∈R𝑑are keys and values (i.e., projection of input 𝑥𝑡∈R𝑑), a simple general formulation for such linear RNNs can be
+written as:
+M𝑡=𝐴𝑡∗M𝑡−1+v𝑡k⊤
+𝑡, (3)
+where∗is an arbitrary associative operator and 𝐴𝑡is a data-(in)dependent diagonal matrix or a scalar (Yang et al. 2024c).
+Despite the efficiency that comes with the linear recurrent nature of these models, the memory can overflow mainly due
+to the additive (without replacement) nature of Hebbian learning rule, resulting in limited memory capacity and limited
+expressive power in in-context learning tasks. Moreover, the vector-valued memory of these architectures can limited
+their ability to learn/memorize large context window, mainly due to the limited expressive power of memory to learn the
+underlying patterns of data (Behrouz et al. 2024c; Sun et al. 2024).
+To address the above mentioned limitations, recurrent models that use a matrix-valued memory with Delta learning rule
+has gained popularity in recent years (Neil et al. 2017; Schlag et al. 2021; Yang et al. 2024c). Despite significant advantages,
+even these delta-rule-based recurrent models face theoretical limitations (Irie et al. 2023) with moderate performance in
+practice (Yang et al. 2024c). Recently, several studies aim to improve the performance of such models by adding scalar or
+channel-wise forget gate mechanisms (Peng et al. 2025b; Yang et al. 2024a), , using negative eigenvalues (Grazzi et al. 2024),
+and multiple learning steps (Siems et al. 2025). They, however, still suffer from performance drop in long context, mainly
+due to the less expressive memory architectures (Behrouz et al. 2024c).
+3
+
+Table 1: Overview of recent sequence models in Miras framework perspective. Surprisingly, all models are using the same
+type of attentional bias and regularization (forget gate). Note that these architectural choices does not uniquely identify
+the backbone as there are other design choices (e.g., input-dependency, channel-wise parameters, etc.) as well as the use of
+other components such as attention, convolutions, etc. Note that for attentional bias and retention gate, we are referring to
+the original design of Miras , discussed in Equation 4 and Remark 1.
+ModelMemoryAttentional BiasRetention MemoryMemory Write OperationArchitecture Gate†Algorithm
+Shallow Memory
+RetNet (2023) Vector Dot-Product L2 GD M𝑡=𝛼M𝑡−1+v𝑡k⊤
+𝑡
+Transformer (2017) Matrix L2 - Nonparametric M𝑡=M𝑡−1∪{(k𝑡,v𝑡)}
+LA (2021) Matrix Dot-Product - GD M𝑡=M𝑡−1+v𝑡k⊤
+𝑡
+DFW Matrix Dot-Product L2 GD M𝑡= 𝛽𝑡𝛼⊤
+𝑡⊙M𝑡−1+v𝑡k⊤
+𝑡
+Lightening Attention (2025) Matrix Dot-Product L2 GD M𝑡=𝛼M𝑡−1+v𝑡k⊤
+𝑡
+GLA (2024) Matrix Dot-Product L2 GD M𝑡=Diag(𝛼𝑡)M𝑡−1+v𝑡k⊤
+𝑡
+Mamba (2024) Matrix Dot-Product L2 GD M𝑡=𝛼𝑡M𝑡−1+v𝑡k⊤
+𝑡
+HGRN2 (2024) Matrix L1 L2 GD M𝑡=Diag(𝛼𝑡)M𝑡−1+v𝑡(1−𝛼𝑡)⊤
+DeltaNet (2017) Matrix L2 - GD M𝑡=(I−𝛽𝑡k𝑡k⊤
+𝑡)M𝑡−1+𝛽𝑡v𝑡k⊤
+𝑡
+Longhorn (2024) Matrix L2 - Implicit GD M𝑡=
+I−𝛽𝑡k𝑡k⊤
+1+𝛽𝑡k⊤
+𝑡k𝑡
+M𝑡−1+
+𝛽𝑡
+1+k⊤
+𝑡k𝑡𝛽𝑡⊙x𝑡
+k𝑡
+TTT-Linear (2024) Matrix L2 - GD M𝑡=M𝑡−1−𝜂∇L(M𝑡−1,x𝑡)
+Gated DeltaNet (2024) Matrix L2 L2 GD M𝑡= 𝛼𝑡(I−𝛽𝑡k𝑡k⊤
+𝑡)M𝑡−1+𝛽𝑡v𝑡k⊤
+𝑡
+RWKV-7 (2025) Matrix L2 L2 GD M𝑡=diag(𝛼𝑡) I−𝛽𝑡k𝑡k⊤
+𝑡M𝑡−1+𝛽𝑡v𝑡k⊤
+𝑡
+DeltaProduct (2025) Matrix L2 L2 MGD∗M𝑡=
+𝛼𝑡Î𝑛
+𝑖=1(I−𝛽𝑡,𝑖k𝑡,𝑖k⊤
+𝑡,𝑖)
+M𝑡−1+Í𝑛
+𝑗=1Î𝑛
+𝑖=𝑗(I−𝛽𝑡,𝑖v𝑗,𝑖k⊤
+𝑗,𝑖)
+Deep Memory
+TTT-MLP (2024) 2-layer MLP L2 - GD M𝑡=M𝑡−1−𝜂∇L(M𝑡−1;k𝑡,v𝑡)
+Titans-LMM (2024) 𝑘-layer MLP L2 L2 GD + Momentum M𝑡=𝛼𝑡M𝑡−1−S𝑡,whereS𝑡=𝜂𝑡S𝑡−1−𝜃𝑡∇L(M𝑡−1;k𝑡,v𝑡)
+Moneta (ours) 2-layer MLP L 𝑝 L𝑞 GD 𝐴𝑡=𝛼𝑡𝐴𝑡−1−𝜂𝑡∇ℓ𝑝(𝑊𝑖−1;k𝑡,v𝑡),𝑊𝑡=𝐴𝑡
+∥𝐴𝑡∥𝑞−2
+𝑞
+Yaad (ours) 2-layer MLP Huber L2 GD𝑊𝑡=𝛼𝑡𝑊𝑡−1−(
+𝜂𝑡∇ℓ2(𝑊𝑡−1;k𝑡,v𝑡) if∥M( k𝑡)−v𝑡∥≤𝛿𝑡,
+𝜂𝑡𝛿𝑡∇ℓ1(𝑊𝑡−1;k𝑡,v𝑡)Otherwise.
+Memora (ours) 2-layer MLP L2 KL GD 𝑊𝑡=Softmax(𝛼𝑡log(𝑊𝑡−1)−𝜂𝑡∇ℓ2(𝑊𝑡−1;k𝑡,v𝑡))
+∗is using multiple rounds of GD per token.
+†For the sake of clarity, we use L2 for all modified L2-like regularizations. However, in fact, only Titans and RWKV-7 are using L2 retention gate (see Section 4)
+Deep Memory Module: Titans and Test Time Training. To overcome the limited memory and to extend the effective
+context length of deep sequence models, more recent studies focus on a new generation of architectures with deep memory
+module (Behrouz et al. 2024c; Sun et al. 2024). These architectures are built on the meta-learning perspective, where the
+memory is an MLP architecture that is updated using gradient descent (with momentum) (Behrouz et al. 2024c; Sun et al.
+2024). Sun et al. (2024) further provide a unifying perspective that how linear and softmax attention are respectively
+parametric and non-parameteric solutions of (kernel) regression loss but consider other modern linear RNNs outside of
+this class of models. Recently, in a concurrent work to ours, Wang et al. (2025) show that with additional simplification
+of modern RNNs (e.g., RetNet (Sun et al. 2023), Mamba (Dao et al. 2024)) they approximately place in the same class of
+models that internally optimize regression loss. It, however, still remains unanswered that “What is the underlying design
+framework behind these sequence models that can accurately unify existing architectures?” Moreover, the role of forget
+gates and its alternative choices in modern sequence models is surprisingly less explored.
+3 Associative Memory, Attentional Bias, and Retention
+Associative memory, which is an inseparable component of learning in humans (Terry 2017), has been the inspiration for
+many artificial neural architectures in the literature (Behrouz et al. 2024c; Hopfield 1982; Neil et al. 2017). These studies,
+however, define instances of the concept of associative memory, limiting the architecture to a specific class of similarity
+metrics between entities (i.e., keys and values). That is, broadly speaking, associative memory is an operator that maps a
+set of keys𝐾to a set of values 𝑉, and so to learn the underlying mapping patterns in data, it requires an objective that
+targets a type of memory and measures the quality of learned mappings:
+Definition 3.1 (Associative Memory and Attentional Bias) .Given a set of keys K⊆R𝑑𝑘and valuesV⊆R𝑑𝑣, associative
+memory is an operator M:K→V . Learning the mapping of associative memory is based on an objective L, called
+4
+
+Attentional Bias , that determines the type of memory and its tendency to prioritize some events:
+M∗=arg min
+ML(M(K) ;V). (4)
+A few remarks are in order:
+Remark 1. When we parameterize the memory with parameter 𝑊, we useM(𝑊,k). In this parameteric setting, the
+optimization problem in (4)should be performed over the parameter 𝑊. Furthermore, in the parametric setup, we might use an
+additional regularization R(𝑊)to control the retaining of the past data.
+Remark 2. Learning the mapping between keys and values (Equation 4) is a meta-learning problem, in which the attentional
+bias is optimized in the inner-loop and all other parameters of the neural network (e.g., linear projections, convolutions, etc.)
+are optimized in the outer-loop. Therefore, the model learns how to store the data into its parameters at test time (Behrouz et al.
+2024c; Sun et al. 2024).
+3.1 Learning to Memorize and to Retain Through the Lens of Optimization
+Definition 3.1 translates the design of a neural architecture based on the concept of associative memory to learning the
+underlying mapping between keys and values, by minimizing an objective L. To optimize Equation 4, one simple approach
+is to utilize the idea of gradient descent. Specifically, given a new pair of keys and values, we update the memory as:
+𝑊𝑡=𝑊𝑡−1−𝜂𝑡∇ℓ(𝑊𝑡−1;k𝑡,v𝑡), (5)
+where, for simplicity, we use the definition ℓ(𝑊𝑡−1;k𝑡,v𝑡):=L(M(𝑊;k𝑡),v𝑡). Behrouz et al. (2024c) re-interpreter this
+formulation as a momentary surprise metric, where the model memorizes tokens that violates the expectation of the
+objective (i.e., being surprising to the memory). Although the choice of objective is an important step to fully interpret
+Equation 5 (which we discuss in detail in Section 5), there are different viewpoints to interpret this update rule in its general
+format, which later can help us to go beyond existing architectures:
+3.2 Viewpoint 1: Online Regression and Follow-The-Regularized-Leader
+Equation (5) can be viewed as one step of online gradient descent over the sequence of the loss functions
+ℓ(𝑊;k1,v1),ℓ(𝑊;k2,v2),...,ℓ(𝑊;k𝑡,v𝑡),.... (6)
+It is well known that the online gradient descent can be viewed as a special case of Follow-The-Regularized-Leader (FTRL)
+algorithm with a special choice of loss functions (Shalev-Shwartz et al. 2012, Chapter 2) and (Hazan et al. 2016). Specifically,
+assuming𝑊0=0, the update rule in (5) is equivalent to
+𝑊𝑡=arg min
+𝑊𝑡∑︁
+𝑖=1⟨𝑊−𝑊𝑖−1,∇ℓ(𝑊𝑖−1;k𝑖,v𝑖)⟩+1
+2𝜂∥𝑊∥2
+2, (7)
+where the term⟨𝑊−𝑊𝑖−1,∇ℓ(𝑊𝑖−1;k𝑖,v𝑖)⟩is the local linear approximation of the original loss at time 𝑖and the second
+term is a regularization term. While the first partÍ𝑡
+𝑖=1⟨𝑊−𝑊𝑖−1,∇ℓ(𝑊𝑖−1;k𝑖,v𝑖)⟩measures how well can the memory
+learn all the past tokens, the second term1
+2𝜂∥𝑊∥2
+2penalizes the memory update with respect to the size of memory.
+Equation (7)uses linear approximation of the loss function and quadratic regularization. We can, however, in principle
+use other approximations of the loss function as well as other regularization functions, as used in the past in online
+optimization (Hazan et al. 2016; Shalev-Shwartz et al. 2012) or in general optimization (Mairal 2015; Razaviyayn et al. 2013).
+Such changes are the idea behind the development of other optimization algorithms such mirror descent. More specifically,
+we can generalize the update rule in (7) to the form:
+𝑊𝑡=arg min
+𝑊∈W𝑡∑︁
+𝑖=1bℓ𝑖(𝑊;k𝑖,v𝑖)
+|             {z             }
+Attentional Bias+1
+𝜂𝑡R𝑡(𝑊)
+|     {z     }
+Memory Stability. (FTRL Viewpoint)
+5
+
+In this update rule, the termÍ𝑡
+𝑖=1bℓ𝑖(𝑊;k𝑖,v𝑖)aims at memorizing the tokens at test time, while the term R𝑡(𝑊)regularizes
+the learning dynamics and take the size of the memory into account when updating it by a new incoming data. Choosing
+different loss functions bℓ𝑖(𝑊;𝑥𝑖)and the regularization term1
+𝜂𝑡R𝑡(𝑊)can lead to different algorithms such as (online)
+gradient descent or mirror descent. In this generalization, 𝜂𝑡to can be data-dependent. Moreover, we will allow imposing
+constraintWon the choice 𝑊.
+3.3 Viewpoint 2: Learning the Latest Token While Retaining Previous Information
+Another way to interpret the update rule (5)is to view it as learning from the latest key-value pair (k𝑖,v𝑖)(via using its
+gradient or surprise metric), while staying close to the previous state 𝑊𝑡−1to retain the previously memorized tokens.
+Formally, (5) is equivalent to
+𝑊𝑡=arg min
+𝑊⟨𝑊−𝑊𝑡−1,∇ℓ(𝑊𝑡−1;k𝑡,v𝑡)⟩+1
+2𝜂𝑡∥𝑊−𝑊𝑡−1∥2
+2
+The first term locally approximates ℓ(𝑊;k𝑡,v𝑡)around the previous state 𝑊𝑡−1, while the last term regularizes deviations
+from𝑊𝑡−1. This form can generalize to
+𝑊𝑡=arg min
+𝑊∈Weℓ𝑡(𝑊;k𝑡,v𝑡)|         {z         }
+Attentional Bias+Ret𝑡(𝑊,𝑊𝑡−1)|            {z            }
+Retention, (Learning-Retaining Viewpoint)
+where the term eℓ𝑡(𝑊;k𝑡,v𝑡)is an approximation of ℓ(𝑊;k𝑡,v𝑡)and minimizing it corresponds to Learning from the new
+concepts(k𝑡,v𝑡). The second term Ret𝑡(𝑊,𝑊𝑡−1)regularizes the changes in 𝑊to make the learning dynamics stable and
+toretain previously learned knowledge. This Retention function may have local and global components:
+Ret𝑡(𝑊,𝑊𝑡−1)=1
+𝜂𝑡D𝑡(𝑊,𝑊𝑡−1)
+|              {z              }
+Local Retention+1
+𝛼𝑡G𝑡(𝑊)
+|      {z      }
+Global Retention.
+Here, the term D𝑡(𝑊,𝑊𝑡−1), which is a premetric that controls the deviations from 𝑊𝑡−1, aims at retaining previously
+learned knowledge. The coefficient 𝜂𝑡can be viewed as a meta in-context learning rate, where larger values of 𝜂𝑡leads
+to learning more from new concepts, while allowing higher forgetting of previously learned concepts. The second term
+is a global retention that controls the change of the memory with respect to its size. The special instances of the above
+viewpoint (e.g., without global retention, with implicit closed-form solution, and/or with limited memory structure) have
+been the motivation behind some of the recent studies such as Liu et al. (2024a).
+3.4 Further Discussions on the Two Viewpoints
+The (FTRL Viewpoint) and(Learning-Retaining Viewpoint) are connected through the lens of online optimization. For
+example, as discussed above, by choosing linear approximation of the loss and quadratic regularization/retention, they
+can both cover online gradient descent update in (5)as a special case. One straightforward way to make the connection
+explicit is by defining the premetric D𝑡(𝑊;𝑊′)based on the previous loss functions and the regularization, as described in
+Proposition 3.2 below:
+Proposition 3.2. Let𝜂𝑡=𝜂and defineℎ𝑡(𝑊):=Í𝑡−1
+𝑖=1bℓ𝑖(𝑊;k𝑖,v𝑖)+1
+𝜂𝑅(𝑊). AssumeW=R𝑑and the function ℎ𝑡(𝑊)is
+strictly convex in 𝑊and letDℎ(·,·)be the Bregman divergence defined by function ℎ(·), i.e.,Dℎ(𝑊,𝑊′)=ℎ(𝑊)−ℎ(𝑊′)−
+⟨∇ℎ(𝑊′),𝑊−𝑊′⟩. Set Ret𝑡(𝑊,𝑊′)=Dℎ(𝑊,𝑊′)andeℓ𝑡(𝑊;𝑥𝑡)=bℓ𝑡(𝑊;𝑥𝑡)in(Learning-Retaining Viewpoint) . Then, the
+update rule in (Learning-Retaining Viewpoint) is equivalent to the update rule in (FTRL Viewpoint) .
+We provide the proof in Appendix B. The above proposition shows that (Learning-Retaining Viewpoint) can also explain
+the approaches obtained by (FTRL Viewpoint) , under some mild assumptions. Hence, (Learning-Retaining Viewpoint)
+may be seen as a more general version. This is why we focus on this viewpoint in most of our derivations in the next
+sections.
+6
+
+Remark 3. Given the above viewpoint, we can see that even by using additional global regularization there is no memory
+erasing or forgetting process (a common term in modern architectures (Behrouz et al. 2024c; Yang et al. 2024a)) but the model
+might decide to not retain the past state of the memory. Interestingly, this observation also matches the human memory process,
+where brain does not erase memories but they might become inaccessible due to retrieval failures (Robertson 2002). Therefore,
+instead of calling it a forget gate, later on, we use “Retention Gate” to refer to this term.
+Remark 4. As we discuss in Section 4 and summarize in Table 1, most existing modern sequence models are optimizing
+associative memory objective (attentional bias in Equation 4) using gradient descent. Therefore, to provide further intuition
+about the connection of existing sequence models as well as their online learning interpretations, we discuss the above two
+viewpoints that are limited to gradient descent-based update rules. Our initial definition of attentional bias and associative
+memory in Equation 4, however, is broader and can be optimized by any optimization algorithm (e.g., even Newton’s method,
+or non-parametric solutions).
+4Miras : Learning to Memorize with Robust and Expressive Memory
+Building upon our definition of associative memory, attentional bias, and previous viewpoints, we present Miras framework
+that not only accurately unifies existing backbone architectures but it also provides insights on how to design the next
+generation of sequence models. As discussed earlier in Section 3, learning an associative memory can be interpreted as a
+meta-learning task, in which the associative memory learns how to compress and store data into its parameters at test
+time. The architecture of the memory in such tasks is particularly important as in longer contexts, the expressivity of the
+memory structure can limit its ability to learn the underlying patterns. Therefore, the first choice to design a sequence
+model is the structure of the memory. Given the structure of the memory, parameterized by a set of parameters 𝑊, as
+discussed earlier, we aim to minimize a loss function ℓ(𝑊;·,·)with a retention regularizer Ret(·)via a learning algorithm
+(e.g., gradient descent). Accordingly, Miras requires four design choices:
+1.Memory Structure: This choice specifies the architecture of the memory. For example, this architecture can be a
+vector, a linear function, a Multilayer Perceptron (MLP) layer, or even more complex structures. We may restrict the
+choice of𝑊to be within a certain region, e.g., 𝑊to lie within an 𝐿2ball to avoid infinite values or unstable training.
+2.Attentional Bias: A key choice is the attentional bias objective L(·) in Equation 4. We can even consider different
+approximations of the loss function, (e.g., bℓ(·,·)in(FTRL Viewpoint) oreℓ(·,·)in(Learning-Retaining Viewpoint) ). The
+choice of attentional bias determines how memory memorizes the context, maps the inputs, and prioritizes the events.
+3.Memory Stability and Retention: Another key choice is the retention regularizer R(·) (e.g.,R𝑡(·)in(FTRL Viewpoint)
+andRet𝑡(·)in(Learning-Retaining Viewpoint) ). In parametric setups, this choice balances learning with retention of
+past state. An effective retention gate is key to the good performance in long context tasks.
+4.Memory Algorithm: Finally, this choice specifies the learning algorithm that we use to optimize the memory
+objective. One may use gradient descent, gradient descent with momentum, or any other algorithm (including finding
+non-parametric solutions).
+The above choices are major design choices for designing backbone sequence models in neural architectures. There
+are, however, minor decisions that can distinguish models; i.e., data-dependent or independent parameters, scalar or
+channel-wise learning rate/retaining gate, etc. Next, we discuss the overview of how existing architectures fit into Miras
+framework.
+RNNs with Hebbian Rule. The first generation of modern recurrent architectures (e.g., Linear attention (Katharopoulos
+et al. 2020), RetNet (Sun et al. 2023), Mamba (Gu et al. 2024), and GLA (Yang et al. 2024b)) are based on Hebbian-like (e.g.,
+gated Hebbian) learning rule (Hebb 2005). We let attentional bias be the dot product similarity. That is, given a memory
+M∈R𝑑×𝑛andk,v∈R𝑑, we define ˜ℓ𝑡:=−2⟨M𝑡k𝑡,v𝑡⟩andlocal retention asRet𝑡(M,M𝑡−1)=∥M𝑡−𝛼M𝑡−1∥2
+𝐹. Using
+Equation Learning-Retaining Viewpoint and gradient descent as the optimizer (i.e., memory learning algorithm), the
+memory update rule is:
+M𝑡=𝛼M𝑡−1+v𝑡k⊤
+𝑡. (8)
+When (1)𝛼=1, memory update is equivalent to Linear Attention (LA) (Katharopoulos et al. 2020); (2) 𝛼∈Ris a learnable
+parameter, resulting architecture is either lightening attention ( 𝑛>1) (Li et al. 2025) or RetNet ( 𝑛=1) (Sun et al. 2023); and
+(3)𝛼𝑡∈Raredata-dependent learnable parameters, resulting sequence model is Mamba2 (Dao et al. 2024).
+7
+
+RNNs with Delta Rule. To improve the memory management and to enhance the memory capacity of the above
+group, several studies suggest using delta rule (Neil et al. 2017; Schlag et al. 2021) as the learning algorithm in recurrent
+neural networks (e.g., DeltaNet (Schlag et al. 2021), Longhorn (Liu et al. 2024a), and RWKV7 (Peng et al. 2025b)). In
+this part, we recall that where M ∈ R𝑑×𝑛, delta rule is equivalent to optimizing MSE objective ∥M𝑡k𝑡−v𝑡∥2
+2with
+Ret𝑡(M,M𝑡−1)=∥M𝑡−𝛼M𝑡−1∥2
+𝐹as local retention, and stochastic gradient descent as optimizer: ( 𝜂𝑡is defined in
+Equation Learning-Retaining Viewpoint)
+M𝑡=𝛼 I−𝜂𝑡k𝑡k⊤
+𝑡M𝑡−1+v𝑡k⊤
+𝑡. (9)
+When (1)𝛼=1, memory update is equivalent to DeltaNet (Schlag et al. 2021); and (2) 𝛼𝑡∈R𝑚aredata-dependent learnable
+parameters, resulting sequence model is either Gated DeltaNet (Yang et al. 2024a) ( 𝑚=1), or RWKV7 (Peng et al. 2025b)
+(𝑚=𝑑). Therefore, RNNs with delta rule are special instances of Miras .
+Beyond Delta Rule. As discussed earlier, while delta rule with its value replacement strategy is more powerful than
+Hebbian-like learning rules, it suffers from theoretical limitations (Irie et al. 2023) and achieves moderate performance
+in practice (Yang et al. 2024c). Therefore, several studies have focused on update rules beyond delta rule. Recently,
+Titans (Behrouz et al. 2024c) suggests using non-linear MSE objective of ∥M𝑡(k𝑡)−v𝑡∥2
+2with both local and global
+retention of D𝑡=∥𝑊𝑡−𝑊𝑡−1∥2
+𝐹andG𝑡=∥𝑊𝑡∥2
+2and optimize it with gradient descent with momentum2. Therefore,
+Titans-LMM is a special instance of Miras , where we use the abovementioned attentional bias and retention regularizations,
+and gradient descent with momentum as the optimizer.
+Another example of such models is Mesa-layer, in which the model usesÍ𝑡
+𝑖=1∥M𝑡(k𝑖)−v𝑖∥2
+2as the attentional bias
+objective with∥M𝑡∥2
+2as the retention regularization. Since these models uses Newton’s method to optimize such an
+objective, they provide a more expressive update rule than delta rule. We further discuss a set of new learning algorithms
+beyond delta rule in Section 5.
+Attention. As discussed by Sun et al. (2024), softmax attention is a non-parameteric solution of ℓ2-MSE loss function (i.e.,
+∥𝑊k−v∥2
+2) with Nadaraya-Watson estimator. Therefore, softmax attention is an instance of Miras , when we find the
+non-parameteric solution to the MSE loss with Nadaraya-Watson estimator, without retention.
+5 Beyond Existing Attentional Biases and Retention Gates
+As discussed in the previous section, existing work focus only on linear/quadratic choices for the attentional bias or retention
+gate. In particular, the loss function 𝐿(M(k𝑡),v𝑡)is defined as 𝐿(M(k𝑡),v𝑡)=𝑐𝑡∥M( k𝑡)−v𝑡∥2for some (learnable)
+constant𝑐𝑡in prior work. Also the regularization term 𝑅𝑡(𝑊)or the parametric D𝑡is considered as a quadratic/linear
+function. In addition, almost all prior work consider 𝑊to be the entire R𝑑space. However, in general there could be
+various choices for all the three aforementioned design choices. To illustrate the potential and flexibility of our designed
+framework, here, we review some of the potential design choices for attentional bias and retention gate in Miras . For
+the sake of clarity, we discuss all these attentional bias and memory retention gates based on using gradient descent as
+the optimizer, and so based on the provided two view points. However, these attentional bias objectives and retention
+regularizers can be directly used in Equation 4 and optimized by using any other optimization algorithms, resulting in
+different update rules.
+5.1 Alternative Attentional Biases
+Variant 1: ℓ𝑝-Attentional Bias. As discussed in the main body, attentional bias defines the “similarity metric” and
+measures how well memory can recall the value, given its corresponding key. Although ℓ2regression loss often is a natural
+choice, it is sensitive to noise in the data. A natural extension is to use ℓ𝑝-norm class of objectives. That is, let Mbe the
+memory, kbe the keys, and vbe the values, we define ℓ𝑝-attentional bias as:
+L(M(𝑊,k𝑡);v𝑡)=∥M( k𝑡)−v𝑡∥𝑝
+𝑝, (10)
+2The retention gate (forget gate) in Titans is different from Mamba2 and Gated DeltaNet that we discussed above. The main difference comes from the
+case of full memory erase. While Mamba2 gating removes the entire memory and treats the next token as the first ever seen data, Titans use a “ cold start ”
+strategy and use the previous state of the memory to measure the surprise of the incoming token before fully erasing the memory.
+8
+
+where𝑝∈R≥1and∥.∥𝑝is the𝑝-norm. Although depending on the distribution of the data, we might want to use different
+values of𝑝(see Section 6), different values of 𝑝can result in memory architectures with interesting properties. For the
+sake of simplicity, let memory be a matrix, i.e., 𝑊∈R𝑚×𝑑andM(𝑊,k𝑡)=𝑊k𝑡, the closed form can be derived as:
+𝑊𝑡=𝑊𝑡−𝜂𝑡∇ℓ(𝑊𝑡−1;k𝑡,v𝑡)=𝑊𝑡−𝑝𝜂𝑡 Sign(𝑊k𝑡−v𝑡)⊙|𝑊k𝑡−v𝑡|𝑝−1k⊤
+𝑡. (11)
+Let𝑝=1, the recurrence is simplified as:
+𝑊𝑡=𝑊𝑡−𝜂𝑡Sign(𝑊𝑡k𝑡−v𝑡)k⊤
+𝑡, (12)
+which means that the memory has only two values of −1and1. We call this variation value-less associative memory, in
+which we store entities (keys) but map them into two extreme class of -1 and +1.
+Remark 5. One of the critical challenges to use the above update rule is in the backpropagation process, in which Sign(·)
+and|·|are non-differentiable and so might cause unstable training. To overcome this issue, we use Sign(𝑥)≈tanh(𝛼𝑥),and
+|𝑥|=√
+𝑥2+𝜖,as the smooth approximators of these functions.
+One simple interpretation for such behavior (i.e., value-less memory) is similar to the coping mechanism in humans (Loftus
+1993), in which the memory does not store the values for extreme events. This interpretation of protective memory in
+extreme events motivates our next variant.
+Variant 2: Huber Loss: Memory with Coping Mechanism. Whileℓ2-norm objective is a common choice for many
+statistical and machine learning tasks, it is known to be sensitive to outliers and extreme samples.This sensitivity extends
+to the use of ℓ2loss for attentional bias. To address this and drawing motivation from robust regression literature, we
+suggest utilizing the Huber loss-type (Hastie et al. 2009; Huber 1992) as the attentional bias, thereby reducing the negative
+impact of the outlier data on the memory learning process.
+We can apply Huber-type loss in three different ways: The first approach is to define the summation of the Huber loss
+across different coordinates as the total loss, i.e.,
+ℓ(𝑊;k𝑡,v𝑡)=∑︁
+𝑗H(M(𝑊,k𝑡)𝑗−v𝑡,𝑗),
+whereM(𝑊,k𝑡)𝑗andv𝑡,𝑗denote the𝑗-th coordinate ofM(𝑊,k𝑡)andv𝑡respectively. The function H(·) :R↦→Ris the
+Huber loss defined as
+H(𝑎)=1
+2𝑎2if|𝑎|≤𝛿
+𝛿 |𝑎|−1
+2𝛿if|𝑎|>𝛿.(13)
+Utilizing this attentional bias can lead to various memory update rules. For example, for the matrix form memory
+M(𝑊,k𝑡)=𝑊k𝑡,the update rule is given by
+𝑊𝑡=𝑊𝑡−1−𝜂𝑡h
+(𝑊k𝑡−v𝑡)k𝑇
+𝑡
+⊙ I(|𝑊k𝑡−v𝑡|≤𝛿𝑡)1⊤+ 𝛿𝑡Sign(𝑊k𝑡−v𝑡)k⊤⊙ I(|𝑊k𝑡−v𝑡|>𝛿𝑡)1⊤i
+(14)
+In this formulation, the parameter 𝛿𝑡decides the type of the memory used for each block of memory ( ℓ2-norm objective or
+value-less) based on the context, making the memory more robust to outliers.
+The second approach is to define the Huber-type loss based on the ℓ2loss over all coordinates, i.e.,
+ℓ(𝑊;k𝑡,v𝑡)=H(∥M(𝑊,k𝑡)−v𝑡∥2).
+For simplicity of derivations, assume matrix memory 𝑀(𝑊,k𝑡)=𝑊k𝑡. Then using gradient descent for updating memory
+leads the memory update rule
+𝑊𝑡=𝑊𝑡−1−𝜂𝑡(
+(M(𝑊𝑡−1,k𝑡)−v𝑡)k𝑇
+𝑡if∥M(𝑊𝑡−1,k𝑡)−v𝑡∥2≤𝛿𝑡,
+𝛿𝑡(M(𝑊𝑡−1,k𝑡)−v𝑡)
+∥M(𝑊𝑡−1,k𝑡)−v𝑡∥2k𝑇
+𝑡 Otherwise.(15)
+Again, in the form (15), the parameter 𝛿𝑡decides the type of the memory used ( ℓ2-norm objective or normalized version)
+based on the context, making the memory more robust to outliers.
+9
+
+Finally, in the third approach, we present a smooth mixture method, in which the memory decides if for an incoming data
+it is better to use ℓ2orℓ1attentional bias:
+𝑊𝑡=𝑊𝑡−1−(
+𝜂𝑡∇ℓ2(𝑊𝑡−1;k𝑡,v𝑡) if∥M( k𝑡)−v𝑡∥≤𝛿𝑡,
+𝜂𝑡𝛿𝑡∇ℓ1(𝑊𝑡−1;k𝑡,v𝑡)Otherwise.(16)
+The role of parameter 𝛿𝑡is the same as above.
+Variant 3: Memory Robust to Value Shifts. Following the robustness requirement discussed in the previous section, we
+aim to design a memory mechanism that exhibits resilience against small shifts in the value parameter. A natural approach
+in this context is to employ a robust optimization formulation. Specifically, we define the loss function as the worst-case ℓ2
+distance between the predicted memory output and the perturbed true value:
+L(M(𝑊,k𝑡);v𝑡)=max
+∥𝜹v𝑡∥2≤Δ1
+2∥M(𝑊,k𝑡)−(v𝑡+𝜹v𝑡)∥2
+2. (17)
+This formulation seeks the memory parameters 𝑊that perform well even under the adverse local perturbation of the true
+value v𝑡within anℓ2ball of radius Δ. To solve the maximization problem in (17), we find the optimal perturbation 𝜹v∗
+𝑡. By
+solving this problem with respect to 𝜹v𝑡, we arrive at:
+𝜹v∗
+𝑡=Δ−M(𝑊,k𝑡)+v𝑡
+∥M(𝑊,k𝑡)−v𝑡∥2
+Substituting this optimal perturbation back into the loss function (17), we obtain the robust loss:
+L(M(𝑊,k𝑡);v𝑡)=1
+2∥M(𝑊,k𝑡)−v𝑡∥2
+2+Δ∥M(𝑊,k𝑡)−v𝑡∥2+1
+2Δ2.
+This robust loss function is a combination of the standard ℓ2loss and a term proportional to the ℓ2norm of the error, scaled
+by the robustness parameter Δ. The value of Δthus controls the trade-off between fitting the nominal data and ensuring
+robustness against value perturbations.
+For simplicity of the derivations, let us consider a constant value for Δ, an Euclidean retention gate Ret𝑡(𝑊,𝑊𝑡−1)=
+∥𝑊−𝑊𝑡−1∥2, and an attentional bias term eℓ(𝑊;k𝑡,v𝑡)=⟨𝑊−𝑊𝑡−1,∇ℓ(𝑊𝑡−1;k𝑡,v𝑡)⟩. Furthermore, to simplify the
+memory operation, we assume a linear matrix memory model M(𝑊,k𝑡)=𝑊k𝑡. Under these assumptions, we can derive
+the memory update mechanism using gradient descent on the robust loss:
+𝑊𝑡=𝑊𝑡−1−𝜂 M(𝑊𝑡−1,k𝑡)−v𝑡k⊤
+𝑡+ΔM(𝑊𝑡−1,k𝑡)−v𝑡
+∥M(𝑊𝑡−1,k𝑡)−v𝑡∥2k⊤
+𝑡
+In this update rule, the parameter Δ, which governs the influence of the robustness term, can also be treated as a learnable
+parameter, allowing the model to adapt its robustness based on the observed data.
+5.2 Alternative Retention Gates
+Variant 1: Memorization Over A Scaled Probability Simplex Via 𝑓-Divergence. A common technique in learning to
+prevent numerical instabilities and exploding values is to restrict the search space to a bounded domain. Following this
+principle, to avoid numerical instabilities, we can constrained the variable 𝑊𝑡to lie within a (scaled) probability simplex. In
+other words, we can restrict the state to lie in the constraint set
+W={𝑊| ∥𝑊∥1=𝑐and𝑊𝑗𝑙≥0,∀𝑗,𝑙}.
+In this set, each matrix 𝑊can be viewed as a measure. Thus, in (Learning-Retaining Viewpoint) , we can utilize divergences
+over measures to define our premetric. For example, we can use 𝑓-divergence measure (Polyanskiy et al. 2025, Def 4.9),
+(Csiszar 1967) to define D𝑡(·,·). More specifically, let 𝑓(·)be a smooth strictly convex function from R+toRwith𝑓(1)=0.
+Then, we can define the 𝑓−divergence between 𝑊and𝑊′as
+D𝑡(𝑊,𝑊′)=∑︁
+𝑗𝑙𝑊′
+𝑗𝑙𝑓 
+𝑊𝑗𝑙
+𝑊′
+𝑗𝑙!
+.
+10
+
+It is known that 𝑓-divergence is zero if and only if 𝑊=𝑊′; see Polyanskiy et al. 2025, Theorem 2.3. Using the above
+premetric as the retention gate and setting eℓ(𝑊;k𝑡,v𝑡)=⟨𝑊−𝑊𝑡−1,∇ℓ(𝑊𝑡−1;k𝑡,v𝑡)⟩in(Learning-Retaining Viewpoint) ,
+we get the update rule
+𝑊𝑡=𝑊𝑡−1⊙𝑔(−𝜁𝑡−𝜂𝑡∇ℓ(𝑊𝑡−1;k𝑡,v𝑡)). (18)
+Here𝑔(·)is the inverse of the mapping 𝑓′, i.e.,𝑔(𝑓′(𝜏))=𝜏,∀𝜏; the operator⊙denotes the Hadamard (elementwise)
+product, and 𝜁𝑡should be chosen such that ∥𝑊𝑡∥1=𝑐. Notice that since the function 𝑓(·)is strictly convex and smooth, its
+derivative is strictly increasing and hence 𝑔(·)is well defined. Conversely, for any strictly monotone function 𝑔(·), we
+can find its inverse function 𝑔−1(which is strictly increasing) and define 𝑓(𝜏)=const+∫∞
+𝜏′=0𝑔−1(𝜏′)𝑑𝜏′. The term const
+should be chosen such that 𝑓(1)=0. Then the update rule in (18)can be interpreted by the 𝑓-divergence regularization, as
+explained above. Therefore, one can directly choose a continuous monotonically increasing function 𝑔(·)and use (18)for
+memory update.
+Specializing to KL divergence. Let us further make the above update rule explicit by using special function 𝑓. If we choose
+𝑓(𝜏)=𝜏ln(𝜏), then the𝑓-divergence becomes the widely used KL divergence measure 𝐷𝑡(𝑊,𝑊𝑡−1)=Í
+𝑗𝑙𝑊𝑗𝑙log𝑊𝑗𝑙
+(𝑊𝑡)𝑗𝑙
+.
+In addition, we can also utilize the Shannon entropy as the global retention by regularizing deviations from uniform
+distribution, i.e., 𝐺𝑡(𝑊)=Í
+𝑗𝑙𝑊𝑗𝑙log(𝑊𝑗𝑙). Combining these choices of the local and global retention gates, we obtain the
+overall retention gate
+Ret𝑡(𝑊,𝑊𝑡−1)=1
+𝜂𝑡∑︁
+𝑗𝑙𝑊𝑗𝑙log𝑊𝑗𝑙
+(𝑊𝑡)𝑗𝑙
++1
+𝛼𝑡∑︁
+𝑗𝑙𝑊𝑗𝑙log(𝑊𝑗𝑙)
+Choosing the attentional bias eℓ(𝑊;k𝑡,v𝑡)=⟨𝑊−𝑊𝑡−1,∇ℓ(𝑊𝑡−1;k𝑡,v𝑡)⟩and the above retention gate will lead to the
+update rule
+𝑊𝑡=arg min
+𝑊⟨𝑊−𝑊𝑡−1,∇ℓ(𝑊𝑡−1;k𝑡,v𝑡)⟩+1
+𝜂𝑡∑︁
+𝑗𝑙𝑊𝑗𝑙log𝑊𝑗𝑙
+(𝑊𝑡)𝑗𝑙
++1
+𝛼𝑡∑︁
+𝑗𝑙𝑊𝑗𝑙log(𝑊𝑗𝑙) (19)
+s.t.∑︁
+𝑗𝑙𝑊𝑗𝑙=𝑐, 𝑊𝑗𝑙≥0,∀𝑗𝑙 (20)
+Attaching the Lagrange multiplier to the first constraint, the KKT conditions implies
+(∇ℓ(𝑊𝑡−1;k𝑡,v𝑡))𝑗𝑙+1
+𝜂𝑡+1
+𝛼𝑡 1+log𝑊𝑗𝑙−1
+𝜂𝑡log (𝑊𝑡−1)𝑗𝑙+𝜇𝑡=0,∀𝑗,𝑙
+where𝜇𝑡should be chosen such thatÍ
+𝑗𝑙𝑊𝑗𝑙=𝑐. Rearranging the terms and defining 𝜆𝑡=1/𝛼𝑡
+1/𝛼𝑡+1/𝜂𝑡,𝜂′
+𝑡=1
+1/𝛼𝑡+1/𝜂𝑡,we get
+the update rule
+𝑊𝑡←𝑐Softmax (1−𝜆𝑡)log(𝑊𝑡−1)−𝜂′
+𝑡∇ℓ(𝑊𝑡−1;k𝑡,v𝑡)(21)
+where𝜆𝑡∈(0,1)and𝜂′∈R+are the parameters that can be learned during training. The Softmax operator ensures that
+the output lies in the set W.
+Notice that while all above calculations are done for a matrix 𝑊, similar update rule holds for other forms of parameters
+such as when 𝑊is a neural network (or when the parameter 𝑊is normalized per slice).
+Variant 2: Elastic Net Regularization: Hard and Soft Forgetting. Elastic net is a powerful and popular tool in
+regression analysis to balance the feature selection capabilities of LASSO (Tibshirani 1996) and bias reduction properties of
+Ridge regression (Hilt et al. 1977; Hoerl et al. 1970). It has been widely used in different applications due to its ability to
+handle high-dimensional data and mitigate the effects of multicollinearity. Given this success, a natural question is what
+happens if we use this regularization scheme in our context.
+Let us start based on (Learning-Retaining Viewpoint) to design our memorization scheme. In (Learning-Retaining Viewpoint) ,
+we discussed that the loss function eℓ𝑡(𝑊;k𝑡,v𝑡)is an approximation of the original function ℓ(·), measuring our goodness-
+of-fit. Regularizing this loss with elastic net regularizer, we obtain the approximation
+eℓ𝑡(𝑊;k𝑡,v𝑡)=⟨𝑊−𝑊𝑡−1,∇ℓ(𝑊𝑡−1;k𝑡,v𝑡)⟩.
+11
+
+with a global retention of G𝑡(𝑊)=1
+2𝛽∥𝑊∥2
+2+1
+𝛼∥𝑊∥1. To fully specify the update rule of (Learning-Retaining Viewpoint) ,
+we also need to specify the premetric functions D𝑡(·,·). For the sake of keeping the update rule simple (and parallelizable),
+we can choose
+D𝑡(𝑊,𝑊𝑡−1)=1
+2∥𝑊−𝑊𝑡−1∥2
+2.
+These choices of the attentional bias and retention gate leads to the following update rule:
+𝑊𝑡=S𝛾(𝜆𝑊𝑡−1−𝜁∇ℓ(𝑊𝑡−1;k𝑡,v𝑡)), (22)
+where𝛾=𝜂𝛽
+𝛼(𝜂+𝛽),𝜆=𝛽
+𝛽+𝜂,𝜁=𝜂𝜆, andS𝛾is the soft thresholding operator, applied element-wise. For each element, this
+operator is defined as
+S𝛾(𝑧)=sign(𝑧)max{0,|𝑧|−𝛾}.
+In other words, for large values of 𝑧,S𝛾(𝑧)makes𝑧closer to zero by 𝛾amount. If it is already in the 𝛾-vicinity of zero,
+then it makes it zero (hard forget).
+Equation (22)can be viewed as a combination of soft forgetting (obtained by multiplying 𝑊by𝜆∈(0,1), and a hard
+forgetting (if it is smaller than 𝛾). The hyperparameters 𝛾,𝜆, and𝜁can be learned. Notice that since the shrinkage
+operator is not differentiable, we can approximate it with its smooth approximation. For example, we can use S𝛾(𝑧)≈
+|𝑧|∗arctan(𝑧/𝛾)
+𝜋/2.
+Variant 3: Elastic Net Regularization: Forgetting via Soft-thresholding. The elastic net regularizer can also be used
+in the (FTRL Viewpoint). In particular, in (FTRL Viewpoint), we can set
+1
+𝜂𝑡𝑅𝑡(𝑊)=1
+𝜂∥𝑊∥2+1
+𝛼∥𝑊∥1
+and use bℓ(𝑊;𝑥𝑖)=⟨𝑊−𝑊𝑖−1,∇ℓ(𝑊𝑖−1;𝑥𝑖)⟩. Assuming initialization at 𝑊0=0, these choices of attentional bias and
+retention gate leads to the update rules:
+𝐴𝑡=𝐴𝑡−1−𝜂∇ℓ(𝑊𝑡−1;k𝑡,v𝑡)
+𝑊𝑡=S𝜂/𝛼(𝐴𝑡) (23)
+HereS𝜂/𝛼(·)is the soft-thresholding operator with parameter 𝜂/𝛼, which can be smoothly as explained in Variant 1.1.
+Variant 4: General 𝐿𝑞Memory Stability. Existing work is based on the retention gate choices D𝑡(𝑊,𝑊𝑡−1)=∥𝑊−𝑊𝑡−1∥2
+𝐹
+or𝑅(𝑊)=∥𝑊∥2
+2. However, one can choose other choices of retention gate. For example, in (FTRL Viewpoint) , we can
+choose𝐿𝑞norm as the regularizer 𝑅(𝑊). More specifically, for 1<𝑞≤2, we can set
+1
+𝜂𝑡𝑅(𝑊)=1
+2𝜂(𝑞−1)∥𝑊∥2
+𝑞.
+Using this retention gate and choosing bℓ𝑖(𝑊;k𝑡,v𝑡)=⟨𝑊−𝑊𝑖−1,∇ℓ(𝑊𝑖−1;k𝑡,v𝑡)⟩in(FTRL Viewpoint) , leads to the update
+rule𝑊𝑡=−𝜂𝐴𝑡
+∥𝐴𝑡∥𝑝−2
+𝑝,where𝑝=𝑞
+𝑞−1and𝐴𝑡=Í𝑡
+𝑖=1∇ℓ(𝑊𝑖−1;k𝑡,v𝑡); see Shalev-Shwartz et al. 2012, Section 2.6. Here, ⊙
+denotes the Hadamard (element-wise) product and |·|is the element-wise absolute value operator. Assuming 𝑊0=0, this
+update rule can be recursively written as:
+𝐴𝑡=𝐴𝑡−1−𝜂∇ℓ(𝑊𝑖−1;k𝑡,v𝑡),and𝑊𝑡=𝐴𝑡
+∥𝐴𝑡∥𝑝−2
+𝑝.
+Variant 5: Bregman Divergence as Retention Gate.. Another natural choice is to use Bregman divergence as retention
+gate, leading to a mirror descent-type algorithms. In particular, given a smooth strictly convex function 𝑓(·):R↦→R, we
+can define the function 𝐹(𝑊)=Í
+𝑗𝑙𝑓(𝑊𝑗𝑙). Based on this choice of function 𝐹, we define the Bregman divergence
+𝐷𝑡(𝑊,𝑊′)=𝐹(𝑊)−𝐹(𝑊′)−⟨𝑊′,𝑊−𝑊′⟩
+12
+
+as our parametric function. Utilizing this retention gate and choosing eℓ𝑡(𝑊;k𝑡,v𝑡)=⟨𝑊−𝑊𝑡−1,∇ℓ(𝑊𝑡−1;k𝑡,v𝑡)⟩in
+(Learning-Retaining Viewpoint), we obtain the update rule
+𝑊𝑡=𝑔(−𝜂∇ℓ(𝑊𝑡−1;k𝑡,v𝑡)+𝐹′(𝑊𝑡−1)).
+Here,𝐹′is the mapping obtained by applying 𝑓′(·)(the derivative of 𝑓) element-wise to all entries of its input matrix
+argument. The function 𝑔is the inverse of the mapping 𝐹′(·), i.e.,𝑔(𝐹′(𝑊))=𝑊.
+If we choose 𝑓(𝜏)=𝜏2
+2, then𝐹′(𝑊)becomes the identity mapping and so is 𝑔. Therefore, the above update becomes simple
+gradient descent with no nonlinearity involved in the update rule. However, other choices of 𝑓(·)introduces additional
+nonlinearity in 𝑔(·), which can enhance the expressivity of our memory. For example, we can choose the function 𝑓(·)so
+that its derivative becomes the inverse sigmoid function, i.e., 𝑓′(𝜏)=ln 𝜏
+1−𝜏with𝑓′:(0,1)↦→R. Since𝑓′(·)is strictly
+increasing, then the function 𝑓(·)(and hence𝐹(·)) is strictly convex. Therefore, the Bregman divergence is well defined.
+Moreover, the inverse of the function 𝑓′(·)becomes the sigmoid function, i.e., 𝑔(𝜏)=𝜎(𝜏)=exp(𝜏)
+1+exp(𝜏)with𝑔:R↦→(0,1).
+Then, the update of the memory becomes
+𝑊𝑡=𝜎
+ln𝑊𝑡
+1−𝑊𝑡
+−𝜂∇ℓ(𝑊𝑡−1;k𝑡,v𝑡)
+,
+where𝜎is the sigmoid function operated element-wise on the entries of 𝑊, and the division operator𝑊𝑡
+1−𝑊𝑡is also performed
+element-wise. This update rule guarantees that the elements of 𝑊𝑡remains within the interval (0,1).
+5.3 Miras ’s Variants: Moneta ,Yaad , and Memora
+In the previous section we discussed different potential choices for attentional bias and retention gate to show the generality
+and the potential of Miras . In this section, building upon our framework, we present three novel sequence models, each of
+which designed based on a different motivation, and discuss how they can leverage fast parallel training.
+Moneta .Given𝑝,𝑞∈R≥1, we design(𝑝,𝑞)-Moneta as the variant of Miras as follows: (1) For the choice of memory
+architecture, we use an MLP with 2 layers with expansion factor of 4 and GELU activation function (Hendrycks et al. 2016).
+We also use residual connections and layer norm, resulting in M(𝑥)=𝑥+LN(𝑊1𝜎(𝑊2𝑥)). (2) We choose ℓ𝑝-attentional
+bias (introduced in Equation 11) for Moneta . (3) For the choice of retention gate, we use the hybrid of ℓ𝑞retention gate
+1
+2(𝑞−1)∥𝑊∥2
+𝑞(see Section 5.2 for details) and the standard ℓ2regularization1
+𝛽∥𝑊∥2
+2. (4) Finally, we use gradient descent as the
+memory learning algorithm. The above choices, result in the following recurrent formula for the memory module:
+𝐴𝑡=𝛼𝑡𝐴𝑡−1−𝜂𝑡∇ℓ𝑝(𝑊𝑖−1;k𝑡,v𝑡),and𝑊𝑡=𝐴𝑡
+∥𝐴𝑡∥𝑞−2
+𝑞. (24)
+Notably the gradient can be calculated using:
+∇ℓ(𝑊𝑡−1;k𝑡,v𝑡)=𝑝𝜂𝑡 Sign(𝑊k𝑡−v𝑡)⊙|𝑊k𝑡−v𝑡|𝑝−1k⊤
+𝑡. (25)
+We use(𝑝,𝑞)=(3,4).
+Yaad .Building upon our discussion on the importance of robust memory that protects itself from extreme events (tokens),
+we design Yaad based on Huber objective. That is, in Miras , for the choice of memory structure, we follow Moneta
+and use an MLP with the same architecture as above; for the choice of attentional bias, we use Huber loss (defined in
+Equation 16); for the choice retention gate, for the sake of simplicity, we use a combination of local and global retention as
+Ret𝑡(𝑊,𝑊𝑡−1)=1
+2𝜃𝑡∥𝑊−𝑊𝑡−1∥2
+F+1
+𝛽𝑡∥𝑊∥2
+2, which is equivalent to the “forget gate” mechanism introduced by Behrouz
+et al. (2024c); and finally, we simply use gradient descent as the memory learning algorithm. Given the above choices, we
+can write the resulted memory learning process as follows:
+𝑊𝑡=𝛼𝑡𝑊𝑡−1−(
+𝜂𝑡∇ℓ2(𝑊𝑡−1;k𝑡,v𝑡) if∥M( k𝑡)−v𝑡∥≤𝛿𝑡,
+𝜂𝑡𝛿𝑡∇ℓ1(𝑊𝑡−1;k𝑡,v𝑡)Otherwise.(26)
+Note that for improving the expressive power, in all architectures, we decouple the learning rate 𝜂and the retention gate
+rate𝛼, resulting in an independent parameter 𝛽𝑡∈[0,1]𝑑.
+13
+
+Figure 2: Visualization of the Miras ’s variant architecture, their hybrid counterpart with SWA, and block design of Miras
+layer.
+Memora .Finally, in Memora , we use the idea of elastic net regularization (i.e., hard and soft retention). To this end, in
+Miras : (1) For the choice of memory architecture, similar to above variants, we use an MLP (the same architecture as the
+previous variants). (2) For the choice of attentional bias, we use simple ℓ2regression loss. (3) For the choice of retention
+gate we use KL divergence as in Equation 21. (4) Finally, we optimize the memory using gradient descent, resulting in the
+following update rule:
+𝑊𝑡=Softmax(𝛼𝑡log(𝑊𝑡−1)−𝜂𝑡∇ℓ2(𝑊𝑡−1;k𝑡,v𝑡)) (27)
+5.4 Architecture Backbone and Fast Training
+Architectural Backbone. For the architectural backbone, we fully follow recent studies (Behrouz et al. 2024c; Yang
+et al. 2024a): We replace attention modules with our variants of Miras in Llama’s macro architecture with MLPs with
+SwiGLU (.) activation, rotary positional encodings (RoPE) (Su et al. 2024), and RMSNorm (Zhang et al. 2019). For Miras
+layer block, we follow the recent modern linear recurrent models (Behrouz et al. 2024c; Yang et al. 2024a), and incorporate
+a 1D depthwise-separable convolution layer (with kernel size of 4) after each of the query, key, and value projections. For
+the sake of training stability, we also use ℓ2normalization to qandk. The output of Miras layer block is normalized and
+gated with a linear layer (Mehta et al. 2023).
+Channel-wise Parameters. For learnable parameters of 𝜂𝑡,𝛿𝑡and the retention gate of 𝛼𝑡we use channel-wise parametriza-
+tion, i.e.,𝜂𝑡,𝛿𝑡,𝛼𝑡∈R𝑑. While gaining more expressive power, this parametrization results in significant parameter increase.
+To mitigate this issue, following Peng et al. (2025b), we use low-rank projections to project the input into R𝑘and then to
+R𝑑, where𝑘is a hyperparameter (usually 32 or 64). The backbone architecture is illustrated in Figure 2.
+Hybrid Models. We also evaluate the hybrid version of Miras ’s variants. For hybrid models, we follow the Samba (Ren
+et al. 2024) architecture, in which we sequentially combine our Miras layer with Sliding Window Attention (SWA). The
+illustration of hybrid model Figure 2.
+Parallelizable Training. While the design of Miras ’s variant are theoretically well-motivated, their recurrence is
+non-linear, potentially make their straightforward training slow for large scales. In this section, we build upon the work of
+Behrouz et al. (2024c) and Sun et al. (2024) to make the training parallelizable. The main idea is to divide the sequence into
+14
+
+chunks with size 𝑏(usually is 16 or 64) and calculate the gradient for all tokens in the current chunk with respect to the
+last state of the memory in the previous chunk. That is, we use ∇ℓ(M𝑡′;k𝑡,v𝑡)instead of∇ℓ(M𝑡−1;k𝑡,v𝑡), where𝑡′is the
+last state in the previous chunk.
+Given the above trick, we can calculate all gradients at once and make the recurrence inside each chunk linear. However,
+to fully take advantage of accelerators, we need to reformulate the process as matrix multiplication. For Moneta , for
+the sake of clarity, assume 𝑞=2. We follow the same algorithm as Behrouz et al. (2024c) and expand the recurrence as
+follows:
+M𝑡=𝛼𝑡M𝑡−1−𝜂𝑡∇ℓ(M𝑡−1;k𝑡,v𝑡)
+=𝛽𝑡M0−𝑡∑︁
+𝑖=1𝜂𝑖𝛽𝑡
+𝛽𝑖∇ℓ(M𝑡′;k𝑖,v𝑖), (28)
+where𝑡′=𝑡−mod(𝑡,𝑏), and𝛽𝑖=Î𝑖
+𝑗=1𝛼𝑗. For the sake of clarity, we focus on the first chunk, i.e., 𝑡=𝑏and so𝑡′=0, and
+explain the process for the case that M𝑡=𝑊𝑡is linear. The process for 2-layer MLPs and other chunks is similar. Using ℓ𝑝
+loss function, we have:
+∇ℓ(𝑊0;k𝑡,v𝑡)=𝑝 Sign(𝑊0k𝑡−v𝑡)⊙|𝑊0k𝑡−v𝑡|𝑝−1k⊤
+𝑡
+⇒𝑏∑︁
+𝑖=1𝜂𝑖𝛽𝑏
+𝛽𝑖∇ℓ(𝑊0; ;k𝑖,v𝑖)=𝑝E𝑏⊙B𝑏⊙Sign(𝑊k𝑡−v𝑡)⊙(|𝑊0K−V|𝑝−1)K⊤, (29)
+where E𝑏=𝜂1𝜂2... 𝜂𝑏andB𝑏is defined analogously on𝛽𝑏
+𝛽𝑖s. For the sake of stablity in training, we use
+Sign(𝑥)≈tanh(𝛼𝑥)and|𝑥|=√
+𝑥2+𝜖, where𝜖>0is a small number (i.e., 𝜖=1𝑒−6). As discussed in Equation 24, the
+case that𝑞≠2appears as a normalization term on the memory. Similar to Titans (Behrouz et al. 2024c) and TTT (Sun et al.
+2024), we do not apply this non-linearity inside each chunk and instead use it at the end of each chunk.
+ForYaad , the process is very similar to the above. We calculate the gradient of both ℓ1andℓ2loss and use a masking based
+on∥M( k𝑡)−v𝑡∥≤𝛿𝑡.
+ForMemora , the update rule has two non-linear part, i.e., softmax and log, making the model hardly parallelizable. To this
+end, as discussed above, we use its linear version inside each chunk and its non-linear version across chunks. However,
+using both log and softmax at the end of each chunk removes the effect of log. To this end, we consider a lag tokens after
+each chunk (i.e., tokens with index 𝑖=𝑘𝑏+1, where𝑏is the chunk size and 𝑘∈Z+). That is, letM0be the last state of the
+memory in previous chunk, we have:
+M1=Softmax(𝛼1log(M 0)−𝜂1∇ℓ2(M 0;k1,v1)), (30)
+and then we useM1for the next chunk. Again, for the sake of clarity, assume that memory is linear, i.e., M1=𝑊1:
+∇ℓ(𝑊1;k𝑡,v𝑡)=(𝑊1k𝑡−v𝑡)k⊤
+𝑡 (31)
+⇒𝑏∑︁
+𝑖=1𝜂𝑖𝛽𝑏
+𝛽𝑖∇ℓ(𝑊1; ;k𝑖,v𝑖)=E𝑏⊙B𝑏⊙(𝑊1K−V)K⊤, (32)
+where matrices are defined the same as for Equation 29.
+6 Experiments
+In our experimental evaluations, we aim to answer three main questions: (1) Does different attentional biases results
+in different architectures in practice? (2) How does different types of retention gates (i.e., retention gate) affect the
+performance of the model in long context? (3) How do Memora ,Moneta , and Yaad perform in downstream tasks compare
+to baselines?
+Setup. We train our models with training context window of size 4096 using either FineWeb-Edu dataset (Penedo et al.
+2024) (for LM and common-sense reasoning tasks) or C4 dataset (Raffel et al. 2020) (for scaling patterns). We use model
+15
+
+Figure 3: Scaling patterns when increasing ( Left) model size, ( Middle ) sequence length (model size = 340M) (3) ( Right )
+sequence length (model size = 760M) on C4 dataset.
+sizes of 120M, 340M, 760M, and 1.3B parameters. We train small models (120M and 340M) on 15B tokens sampled from the
+dataset, the medium size model (760M) on 30B tokens, and the large model on 100B tokens. Baseline results are reported
+by Behrouz et al. (2024c).
+6.1 Language Modeling and Common-sense Reasoning
+We follow recent studies (Behrouz et al. 2024c; Yang et al. 2024a,c) and first focus on the perplexity in language modeling
+and also commonsense reasoning tasks. The results for Memora ,Yaad ,Moneta and also baselines with size of 340M, 760,
+and 1.3B are reported in Table 2. All of our variants outperforms all the baselines including Transformer++, modern linear
+recurrent models and hybrid methods. The superior performance compared to hybrid models is particularly important as
+all of our variants are pure recurrent (attention-free). Among the three variants of Miras , while Moneta achieves slightly
+weaker performance than Memora , and Yaad , the other two variants are close and depending on the task and model size,
+the best model can vary.
+6.2 Scaling Pattern
+To evaluate the scaling pattern of models and for comparing them with baseline, in this section, we plot their performance
+with varying the model size and the context window.
+Context Length. We first vary the training context length from 2K to 32K for two version of our model with size
+340M and 760M. The results are reported in Figure 3 (Middle and Right). All three variants of Miras scales better than
+state-of-the-art baselines when increasing the context length. We attribute this superior performance to: (1) expressive
+memory architecture. Contrary to baselines like Mamba2 and GSA that uses vector- and matrix-valued memory, our
+variants are using 2-layer MLPs with more expressive power to learn from longer sequences. (2) The choice of retention
+gate and attentional bias: All of our three variants go beyond the standard attentional biases and retention gates. These
+choices can help the memory to better manage its fixed-size capacity.
+Model Size. We also report the #FLOPs vs. perplexity of our models and baselines in Figure 3 (Left). All three variants
+outperforms all baselines given almost the same budget of FLOPs. These results, once again support the importance of
+powerful memory design.
+6.3 Needle In Haystack
+To evaluate the effective context window of our models and baselines, we use needle-in-haystack task. In this task, we
+evaluate the model on retrieving a piece of information (i.e., the “needle”) from long distractor texts (i.e., the “haystack”).
+We focus on the Single NIAH (S-NIAH) task from RULER benchmark (Hsieh et al. 2024) and evaluate our models and
+baselines on sequences with length 1K, 2K, 4K, and 8K. The results are reported in Table 3. All our variants outperforms all
+the baselines with a considerable margin. Interestingly, Moneta shows better performance than others when the data is
+synthetic noise (S-NIAH-PK). This observation validates the effectiveness of 𝑝-norm objective and retention gates as they
+are more robust to noise.
+16
+
+Table 2: Performance of Miras ’s variants and baselines on language modeling and common-sense reasoning tasks. Hybrid
+models are marked with∗. The best results of simple and hybrid models are highlighted. In largest scale, we compare
+our simple models with even hybrid models and highlight the best results.
+Model Wiki. LMB. LMB. PIQA Hella. Wino. ARC-e ARC-c SIQA BoolQ
+ppl↓ ppl↓ acc↑ acc↑ acc_n↑ acc↑ acc↑ acc_n↑acc↑ acc↑
+340M params / 15B tokens
+Transformer++ 31.52 41.08 30.76 62.98 34.76 50.53 45.21 24.05 36.81 58.24
+RetNet 32.50 49.73 28.24 62.61 34.15 50.91 44.27 23.62 36.79 59.72
+GLA 28.51 43.02 28.73 64.05 35.96 50.00 54.19 24.29 37.13 58.39
+Mamba 30.83 40.21 29.94 63.79 35.88 49.82 49.24 24.56 35.41 60.07
+DeltaNet 28.65 47.30 28.43 63.52 35.95 49.63 52.68 25.37 37.96 58.79
+TTT 27.44 34.19 30.06 63.97 35.71 50.08 53.01 26.11 37.32 59.83
+Gated DeltaNet 27.01 30.94 34.11 63.08 38.12 51.60 55.28 26.77 34.89 59.54
+Moneta (ours) 26.19 29.31 35.70 63.99 39.23 52.04 55.96 27.15 37.29 60.22
+Yaad (ours) 26.61 29.11 34.09 64.93 39.86 51.12 54.75 28.64 33.82 60.29
+Memora (ours) 27.16 30.44 33.68 65.21 39.17 51.23 53.40 27.99 34.1 59.29
+760M params / 30B tokens
+Transformer++ 25.21 27.64 35.78 66.92 42.19 51.95 60.38 32.46 39.51 60.37
+RetNet 26.08 24.45 34.51 67.19 41.63 52.09 63.17 32.78 38.36 57.92
+Mamba2 22.94 28.37 33.54 67.90 42.71 49.77 63.48 31.09 40.06 58.15
+DeltaNet 24.37 24.60 37.06 66.93 41.98 50.65 64.87 31.39 39.88 59.02
+TTT 24.17 23.51 34.74 67.25 43.92 50.99 64.53 33.81 40.16 59.58
+Gated DeltaNet 21.18 22.09 35.54 68.01 44.95 50.73 66.87 33.09 39.21 59.14
+Samba∗20.63 22.71 39.72 69.19 47.35 52.01 66.92 33.20 38.98 61.24
+Gated DeltaNet-H2∗19.88 20.83 39.18 68.95 48.22 52.57 67.01 35.49 39.39 61.11
+Moneta (ours) 21.18 21.94 38.02 69.55 49.16 53.01 67.47 36.09 40.53 63.18
+Yaad (ours) 20.99 21.57 37.85 69.14 50.02 53.93 67.78 36.27 41.01 63.34
+Memora (ours) 22.28 22.31 38.19 67.82 49.30 53.28 63.57 36.15 40.94 62.96
+Moneta -H (ours) 18.72 20.13 40.59 70.84 50.13 54.17 67.64 36.79 40.87 62.43
+Yaad -H (ours) 18.59 19.80 40.22 69.51 50.48 53.69 68.04 36.55 40.28 61.94
+Memora -H (ours) 18.24 20.55 39.91 69.06 49.84 52.88 66.90 36.12 40.99 61.75
+1.3B params / 100B tokens
+Transformer++ 18.53 18.32 42.60 70.02 50.23 53.51 68.83 35.10 40.66 57.09
+RetNet 19.08 17.27 40.52 70.07 49.16 54.14 67.34 33.78 40.78 60.39
+Mamba2 16.56 12.56 45.66 71.87 55.67 55.24 72.47 37.88 40.20 60.13
+DeltaNet 17.71 16.88 42.46 70.72 50.93 53.35 68.47 35.66 40.22 55.29
+Gated DeltaNet 16.42 12.17 46.65 72.25 55.76 57.45 71.21 38.39 40.63 60.24
+Samba∗16.13 13.29 44.94 70.94 53.42 55.56 68.81 36.17 39.96 62.11
+Gated DeltaNet-H2∗15.91 12.55 48.76 72.19 56.88 57.77 71.33 39.07 41.91 61.55
+Moneta (ours) 15.52 11.47 47.88 73.16 56.14 59.09 72.53 40.32 41.91 61.18
+Yaad (ours) 15.18 11.89 47.23 72.81 56.46 59.02 72.14 40.05 40.73 61.86
+Memora (ours) 15.90 12.04 48.67 73.10 55.99 57.36 71.55 37.92 40.19 61.34
+6.4 Ablation Study
+In this section we perform ablation studies to validate if different design choices that we discussed through the paper are
+positively contributing for achieving better results.
+The Effect of 𝑝on Performance. We first evaluate the effect of 𝑝on the performance of Moneta . We vary the value of
+𝑝∈{1,1.5,2,2.8,3,3.2,4}and context window from 2K to 16K. The results are reported in Figure 4. Interestingly, there
+is no monotone pattern when increasing the value of 𝑝and the best performance is achieved when 𝑝=3, while𝑝=4
+17
+
+Table 3: Performance of Moneta ,Yaad ,Memora , and baselines on NIAH task from RULER benchmark. The best results
+with highest accuracy are highlighted.
+ModelS-NIAH-PK S-NIAH-N S-NIAH-WAverage
+2K 4K 8K 2K 4K 8K 1K 2K 4K
+Mamba2 98.6 61.4 31.0 98.4 55.8 14.2 62.2 42.2 4.2 52.0
+DeltaNet 96.8 98.8 98.6 47.2 15.4 12.8 85.2 46.2 20.0 57.9
+Gated DeltaNet 89.8 91.4 90.0 99.2 91.8 26.4 86.4 82.6 24.4 75.8
+TTT 98.4 98.8 98.0 60.2 36.6 10.2 85.8 78.8 28.0 66.1
+Moneta 99.4 98.8 98.8 99.4 99.4 92.8 92.2 88.2 70.8 93.5
+Yaad 99.2 98.6 94.4 99.8 98.6 93.2 91.8 89.6 67.4 92.9
+Memora 99.2 98.8 92.6 98.4 99.2 93.2 92.4 88.2 70.4 92.1
+achieves the worst performance. Also, although different values of 𝑝results in different memory modules with varied
+performance, the scaling pattern when increasing the context length is almost the same.
+The Effect of 𝑞on Performance. Similarly, we evaluate the effect of 𝑞by varying it in{2,3,4,5}. Interestingly, contrary
+to𝑝, the value of 𝑞can change the scaling pattern when increasing the context length. The main reason for this observation
+is that the value of 𝑞determines the retention gate and a powerful retention gate can improve the memory management,
+resulting in better performance.
+The Effect of Design. To evaluate the architectural design choices, we perform an ablation study on Yaad . The results
+are in Table 4. The first row, reports the performance of Yaad , while (1) the second row removes the retention (i.e., 𝛽=1),
+(2) third row make 𝛿input independent, (3) the third row removes ℓ2-loss from the Huber loss, (4) the forth row removes
+theℓ1condition, and (5) the last row replaces the MLP with a linear layer. These results indicate that all design choices are
+contributing to the performance of the model.
+Figure 4: The effect of parameters 𝑝and𝑞on the performance with
+different context length.Table 4: Ablation study on the compo-
+nents of Yaad .
+Model Avg. LM
+Yaad 53.98
+- Retention Gate 50.63
+- Input-dependent 𝛿 52.19
+ℓ2-loss 52.86
+ℓ1-loss 53.04
+linear memory 51.57
+7 Conclusion
+In this paper, we present Miras , a general framework that explains the connection of online optimization and test time
+memorization. Miras framework can explain the role of several standard architectural choices in the literature (e.g., forget
+gate) and helps design next generation of architectures that are capable of managing the memory better. Building upon
+our framework, we present three novel sequence models, each of which with its own (dis)advantages. Our experimental
+evaluations show that all these variants are more powerful than Transformers and linear RNNs, in various downstream
+tasks. In this work, we present a diverse set of variants using Miras . In future, exploring these alternative architectures for
+different downstream tasks is an interesting future direction.
+18
+
+References
+[1] Ali Behrouz, Parsa Delavari, and Farnoosh Hashemi. “Unsupervised Representation Learning of Brain Activity via
+Bridging Voxel Activity and Functional Connectivity”. In: Forty-first International Conference on Machine Learning .
+2024. url:https://openreview.net/forum?id=nOjZfpLyh1 .
+[2] Ali Behrouz, Michele Santacatterina, and Ramin Zabih. “Mambamixer: Efficient selective state space models with
+dual token and channel selection”. In: arXiv preprint arXiv:2403.19888 (2024).
+[3] Ali Behrouz, Peilin Zhong, and Vahab Mirrokni. “Titans: Learning to memorize at test time”. In: arXiv preprint
+arXiv:2501.00663 (2024).
+[4] Alberto Bietti, Vivien Cabannes, Diane Bouchacourt, Herve Jegou, and Leon Bottou. “Birth of a transformer: A
+memory viewpoint”. In: Advances in Neural Information Processing Systems 36 (2023), pp. 1560–1588.
+[5] Yonatan Bisk, Rowan Zellers, Jianfeng Gao, Yejin Choi, et al. “Piqa: Reasoning about physical commonsense in
+natural language”. In: Proceedings of the AAAI conference on artificial intelligence . Vol. 34. 2020, pp. 7432–7439.
+[6] Leon Bottou and Vladimir Vapnik. “Local learning algorithms”. In: Neural computation 4.6 (1992), pp. 888–900.
+[7] Christopher Clark, Kenton Lee, Ming-Wei Chang, Tom Kwiatkowski, Michael Collins, and Kristina Toutanova.
+“BoolQ: Exploring the Surprising Difficulty of Natural Yes/No Questions”. In: Proceedings of the 2019 Conference
+of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies,
+Volume 1 (Long and Short Papers) . Ed. by Jill Burstein, Christy Doran, and Thamar Solorio. Minneapolis, Minnesota:
+Association for Computational Linguistics, June 2019, pp. 2924–2936. doi:10.18653/v1/N19-1300 .url:https:
+//aclanthology.org/N19-1300/ .
+[8] Peter Clark, Isaac Cowhey, Oren Etzioni, Tushar Khot, Ashish Sabharwal, Carissa Schoenick, and Oyvind Tafjord.
+“Think you have solved question answering? try arc, the ai2 reasoning challenge”. In: arXiv preprint arXiv:1803.05457
+(2018).
+[9] Imre Csiszar. “On information-type measure of difference of probability distributions and indirect observations”. In:
+Studia Sci. Math. Hungar. 2 (1967), pp. 299–318.
+[10] Róbert Csordás, Christopher Potts, Christopher D Manning, and Atticus Geiger. “Recurrent Neural Networks Learn to
+Store and Generate Sequences using Non-Linear Representations”. In: Proceedings of the 7th BlackboxNLP Workshop:
+Analyzing and Interpreting Neural Networks for NLP . 2024, pp. 248–262.
+[11] Karan Dalal, Daniel Koceja, Gashon Hussein, Jiarui Xu, Yue Zhao, Youjin Song, Shihao Han, Ka Chun Cheung,
+Jan Kautz, Carlos Guestrin, et al. “One-Minute Video Generation with Test-Time Training”. In: arXiv preprint
+arXiv:2504.05298 (2025).
+[12] Tri Dao and Albert Gu. “Transformers are SSMs: Generalized models and efficient algorithms through structured
+state space duality”. In: arXiv preprint arXiv:2405.21060 (2024).
+[13] Soham De, Samuel L Smith, Anushan Fernando, Aleksandar Botev, George Cristian-Muraru, Albert Gu, Ruba Haroun,
+Leonard Berrada, Yutian Chen, Srivatsan Srinivasan, et al. “Griffin: Mixing gated linear recurrences with local
+attention for efficient language models”. In: arXiv preprint arXiv:2402.19427 (2024).
+[14] Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner,
+Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, et al. “An image is worth 16x16 words:
+Transformers for image recognition at scale”. In: arXiv preprint arXiv:2010.11929 (2020).
+[15] Yossi Gandelsman, Yu Sun, Xinlei Chen, and Alexei Efros. “Test-time training with masked autoencoders”. In:
+Advances in Neural Information Processing Systems 35 (2022), pp. 29374–29385.
+[16] Xavier Gonzalez, Andrew Warrington, Jimmy Smith, and Scott Linderman. “Towards scalable and stable paralleliza-
+tion of nonlinear rnns”. In: Advances in Neural Information Processing Systems 37 (2024), pp. 5817–5849.
+[17] Riccardo Grazzi, Julien Siems, Jörg KH Franke, Arber Zela, Frank Hutter, and Massimiliano Pontil. “Unlocking
+state-tracking in linear rnns through negative eigenvalues”. In: arXiv preprint arXiv:2411.12537 (2024).
+[18] Klaus Greff, Rupesh K Srivastava, Jan Koutnk, Bas R Steunebrink, and Jürgen Schmidhuber. “LSTM: A search space
+odyssey”. In: IEEE transactions on neural networks and learning systems 28.10 (2016), pp. 2222–2232.
+[19] Albert Gu and Tri Dao. “Mamba: Linear-Time Sequence Modeling with Selective State Spaces”. In: First Conference
+on Language Modeling . 2024. url:https://openreview.net/forum?id=tEYskw1VY2 .
+[20] Albert Gu, Karan Goel, and Christopher Re. “Efficiently Modeling Long Sequences with Structured State Spaces”.
+In:International Conference on Learning Representations . 2022. url:https : / / openreview . net / forum ? id =
+uYLFoz1vlAC .
+19
+
+[21] Ramin Hasani, Mathias Lechner, Tsun-Hsuan Wang, Makram Chahine, Alexander Amini, and Daniela Rus. “Liquid
+Structural State-Space Models”. In: The Eleventh International Conference on Learning Representations . 2023. url:
+https://openreview.net/forum?id=g4OTKRKfS7R .
+[22] Trevor Hastie, Robert Tibshirani, Jerome Friedman, et al. The elements of statistical learning . 2009.
+[23] Elad Hazan et al. “Introduction to online convex optimization”. In: Foundations and Trends ®in Optimization 2.3-4
+(2016), pp. 157–325.
+[24] Donald Olding Hebb. The organization of behavior: A neuropsychological theory . Psychology press, 2005.
+[25] Dan Hendrycks and Kevin Gimpel. “Gaussian error linear units (gelus)”. In: arXiv preprint arXiv:1606.08415 (2016).
+[26] Donald E Hilt and Donald W Seegrist. Ridge, a computer program for calculating ridge regression estimates . Vol. 236.
+Department of Agriculture, Forest Service, Northeastern Forest Experiment . . ., 1977.
+[27] Arthur E Hoerl and Robert W Kennard. “Ridge regression: applications to nonorthogonal problems”. In: Technometrics
+12.1 (1970), pp. 69–82.
+[28] John J Hopfield. “Neural networks and physical systems with emergent collective computational abilities.” In:
+Proceedings of the national academy of sciences 79.8 (1982), pp. 2554–2558.
+[29] Cheng-Ping Hsieh, Simeng Sun, Samuel Kriman, Shantanu Acharya, Dima Rekesh, Fei Jia, and Boris Ginsburg.
+“RULER: What’s the Real Context Size of Your Long-Context Language Models?” In: First Conference on Language
+Modeling . 2024. url:https://openreview.net/forum?id=kIoBbc76Sy .
+[30] Jerry Yao-Chieh Hu, Dennis Wu, and Han Liu. “Provably optimal memory capacity for modern hopfield models:
+Transformer-compatible dense associative memories as spherical codes”. In: arXiv preprint arXiv:2410.23126 (2024).
+[31] Peter J Huber. “Robust estimation of a location parameter”. In: Breakthroughs in statistics: Methodology and distribution .
+Springer, 1992, pp. 492–518.
+[32] Kazuki Irie, Robert Csordas, and Jürgen Schmidhuber. “Practical computational power of linear transformers and
+their recurrent and self-referential extensions”. In: arXiv preprint arXiv:2310.16076 (2023).
+[33] Kazuki Irie, Imanol Schlag, Robert Csordas, and Jurgen Schmidhuber. “Going beyond linear transformers with
+recurrent fast weight programmers”. In: Advances in neural information processing systems 34 (2021), pp. 7703–7717.
+[34] Vidit Jain and Erik Learned-Miller. “Online domain adaptation of a pre-trained cascade of classifiers”. In: CVPR 2011 .
+IEEE. 2011, pp. 577–584.
+[35] Jared Kaplan, Sam McCandlish, Tom Henighan, Tom B Brown, Benjamin Chess, Rewon Child, Scott Gray, Alec
+Radford, Jeffrey Wu, and Dario Amodei. “Scaling laws for neural language models”. In: arXiv preprint arXiv:2001.08361
+(2020).
+[36] M. Karami and V. Mirrokni. Lattice: Learning to Efficiently Compress the Memory . 2025.
+[37] Angelos Katharopoulos, Apoorv Vyas, Nikolaos Pappas, and François Fleuret. “Transformers are rnns: Fast au-
+toregressive transformers with linear attention”. In: International conference on machine learning . PMLR. 2020,
+pp. 5156–5165.
+[38] Dmitry Krotov. “Hierarchical associative memory”. In: arXiv preprint arXiv:2107.06446 (2021).
+[39] Dmitry Krotov and John J Hopfield. “Dense associative memory for pattern recognition”. In: Advances in neural
+information processing systems 29 (2016).
+[40] Aonian Li, Bangwei Gong, Bo Yang, Boji Shan, Chang Liu, Cheng Zhu, Chunhao Zhang, Congchao Guo, Da Chen,
+Dong Li, et al. “Minimax-01: Scaling foundation models with lightning attention”. In: arXiv preprint arXiv:2501.08313
+(2025).
+[41] Chengxuan Li, Di Huang, Zeyu Lu, Yang Xiao, Qingqi Pei, and Lei Bai. “A survey on long video generation: Challenges,
+methods, and prospects”. In: arXiv preprint arXiv:2403.16407 (2024).
+[42] Xiaoyu Li, Yuanpeng Li, Yingyu Liang, Zhenmei Shi, and Zhao Song. “On the expressive power of modern hopfield
+networks”. In: arXiv preprint arXiv:2412.05562 (2024).
+[43] Yi Heng Lim, Qi Zhu, Joshua Selfridge, and Muhammad Firmansyah Kasim. “Parallelizing non-linear sequential
+models over the sequence length”. In: The Twelfth International Conference on Learning Representations . 2024. url:
+https://openreview.net/forum?id=E34AlVLN0v .
+[44] Bo Liu, Rui Wang, Lemeng Wu, Yihao Feng, Peter Stone, and Qiang Liu. “Longhorn: State space models are amortized
+online learners”. In: arXiv preprint arXiv:2407.14207 (2024).
+[45] Nelson F Liu, Kevin Lin, John Hewitt, Ashwin Paranjape, Michele Bevilacqua, Fabio Petroni, and Percy Liang. “Lost in
+the middle: How language models use long contexts”. In: Transactions of the Association for Computational Linguistics
+12 (2024), pp. 157–173.
+[46] Elizabeth F Loftus. “The reality of repressed memories.” In: American psychologist 48.5 (1993), p. 518.
+20
+
+[47] Carlo Lucibello and Marc Mézard. “Exponential capacity of dense associative memories”. In: Physical Review Letters
+132.7 (2024), p. 077301.
+[48] Julien Mairal. “Incremental majorization-minimization optimization with application to large-scale machine learning”.
+In:SIAM Journal on Optimization 25.2 (2015), pp. 829–855.
+[49] Harsh Mehta, Ankit Gupta, Ashok Cutkosky, and Behnam Neyshabur. “Long Range Language Modeling via Gated
+State Spaces”. In: The Eleventh International Conference on Learning Representations . 2023. url:https://openreview.
+net/forum?id=5MkYIYCbva .
+[50] Stephen Merity, Caiming Xiong, James Bradbury, and Richard Socher. “Pointer Sentinel Mixture Models”. In:
+International Conference on Learning Representations . 2017. url:https://openreview.net/forum?id=Byj72udxe .
+[51] William Merrill, Jackson Petty, and Ashish Sabharwal. “The Illusion of State in State-Space Models”. In: Forty-first
+International Conference on Machine Learning . 2024. url:https://openreview.net/forum?id=QZgo9JZpLq .
+[52] Ravi Teja Mullapudi, Steven Chen, Keyi Zhang, Deva Ramanan, and Kayvon Fatahalian. “Online model distillation
+for efficient video inference”. In: Proceedings of the IEEE/CVF International conference on computer vision . 2019,
+pp. 3573–3582.
+[53] Tsendsuren Munkhdalai, Alessandro Sordoni, Tong Wang, and Adam Trischler. “Metalearned neural memory”. In:
+Advances in Neural Information Processing Systems 32 (2019).
+[54] Tsendsuren Munkhdalai and Hong Yu. “Neural semantic encoders”. In: Proceedings of the conference. Association for
+Computational Linguistics. Meeting . Vol. 1. NIH Public Access. 2017, p. 397.
+[55] Daniel Neil, Jun Haeng Lee, Tobi Delbruck, and Shih-Chii Liu. “Delta networks for optimized recurrent network
+computation”. In: International conference on machine learning . PMLR. 2017, pp. 2584–2593.
+[56] Hideyuki Okano, Tomoo Hirano, and Evan Balaban. “Learning and memory”. In: Proceedings of the National Academy
+of Sciences 97.23 (2000), pp. 12403–12404.
+[57] Antonio Orvieto, Samuel L Smith, Albert Gu, Anushan Fernando, Caglar Gulcehre, Razvan Pascanu, and Soham De.
+“Resurrecting recurrent neural networks for long sequences”. In: International Conference on Machine Learning . PMLR.
+2023, pp. 26670–26698.
+[58] Denis Paperno, German Kruszewski, Angeliki Lazaridou, Ngoc Quan Pham, Raffaella Bernardi, Sandro Pezzelle,
+Marco Baroni, Gemma Boleda, and Raquel Fernandez. “The LAMBADA dataset: Word prediction requiring a broad
+discourse context”. In: Proceedings of the 54th Annual Meeting of the Association for Computational Linguistics (Volume
+1: Long Papers) . Ed. by Katrin Erk and Noah A. Smith. Berlin, Germany: Association for Computational Linguistics,
+Aug. 2016, pp. 1525–1534. doi:10.18653/v1/P16-1144 .url:https://aclanthology.org/P16-1144/ .
+[59] Guilherme Penedo, Hynek Kydlcek, Loubna Ben allal, Anton Lozhkov, Margaret Mitchell, Colin Raffel, Leandro
+Von Werra, and Thomas Wolf. “The FineWeb Datasets: Decanting the Web for the Finest Text Data at Scale”. In:
+The Thirty-eight Conference on Neural Information Processing Systems Datasets and Benchmarks Track . 2024. url:
+https://openreview.net/forum?id=n6SCkn2QaG .
+[60] Bo Peng, Eric Alcaide, Quentin Gregory Anthony, Alon Albalak, Samuel Arcadinho, Stella Biderman, Huanqi Cao,
+Xin Cheng, Michael Nguyen Chung, Leon Derczynski, Xingjian Du, Matteo Grella, Kranthi Kiran GV, Xuzheng He,
+Haowen Hou, Przemyslaw Kazienko, Jan Kocon, Jiaming Kong, Bartłomiej Koptyra, Hayden Lau, Jiaju Lin, Krishna
+Sri Ipsit Mantri, Ferdinand Mom, Atsushi Saito, Guangyu Song, Xiangru Tang, Johan S. Wind, Stanisław Wozniak,
+Zhenyuan Zhang, Qinghua Zhou, Jian Zhu, and Rui-Jie Zhu. “RWKV: Reinventing RNNs for the Transformer Era”.
+In:The 2023 Conference on Empirical Methods in Natural Language Processing . 2023. url:https://openreview.net/
+forum?id=7SaXczaBpG .
+[61] Bo Peng, Daniel Goldstein, Quentin Anthony, Alon Albalak, Eric Alcaide, Stella Biderman, Eugene Cheah, Xingjian
+Du, Teddy Ferdinan, Haowen Hou, et al. “Eagle and finch: Rwkv with matrix-valued states and dynamic recurrence”.
+In:arXiv preprint arXiv:2404.05892 (2024).
+[62] Bo Peng, Ruichong Zhang, Daniel Goldstein, Eric Alcaide, Haowen Hou, Janna Lu, William Merrill, Guangyu Song,
+Kaifeng Tan, Saiteja Utpala, et al. “RWKV-7" Goose" with Expressive Dynamic State Evolution”. In: arXiv preprint
+arXiv:2503.14456 (2025).
+[63] Bo Peng, Ruichong Zhang, Daniel Goldstein, Eric Alcaide, Haowen Hou, Janna Lu, William Merrill, Guangyu Song,
+Kaifeng Tan, Saiteja Utpala, et al. “Rwkv-7" goose" with expressive dynamic state evolution”. In: arXiv preprint
+arXiv:2503.14456 (2025).
+[64] Yury Polyanskiy and Yihong Wu. Information theory: From coding to learning . Cambridge university press, 2025.
+[65] DL Prados and SC Kak. “Neural network capacity using delta rule”. In: Electronics Letters 25.3 (1989), pp. 197–199.
+21
+
+[66] Zhen Qin, Songlin Yang, Weixuan Sun, Xuyang Shen, Dong Li, Weigao Sun, and Yiran Zhong. “HGRN2: Gated Linear
+RNNs with State Expansion”. In: First Conference on Language Modeling . 2024. url:https://openreview.net/
+forum?id=y6SqbJfCSk .
+[67] Colin Raffel, Noam Shazeer, Adam Roberts, Katherine Lee, Sharan Narang, Michael Matena, Yanqi Zhou, Wei Li, and
+Peter J Liu. “Exploring the limits of transfer learning with a unified text-to-text transformer”. In: Journal of machine
+learning research 21.140 (2020), pp. 1–67.
+[68] Hubert Ramsauer, Bernhard Schäfl, Johannes Lehner, Philipp Seidl, Michael Widrich, Lukas Gruber, Markus Holzleit-
+ner, Thomas Adler, David Kreil, Michael K Kopp, Günter Klambauer, Johannes Brandstetter, and Sepp Hochreiter.
+“Hopfield Networks is All You Need”. In: International Conference on Learning Representations . 2021. url:https:
+//openreview.net/forum?id=tL89RnzIiCd .
+[69] Meisam Razaviyayn, Mingyi Hong, and Zhi-Quan Luo. “A unified convergence analysis of block successive mini-
+mization methods for nonsmooth optimization”. In: SIAM Journal on Optimization 23.2 (2013), pp. 1126–1153.
+[70] Liliang Ren, Yang Liu, Yadong Lu, Yelong Shen, Chen Liang, and Weizhu Chen. “Samba: Simple Hybrid State Space
+Models for Efficient Unlimited Context Language Modeling”. In: arXiv preprint arXiv:2406.07522 (2024).
+[71] Lee T Robertson. “Memory and the brain”. In: Journal of dental education 66.1 (2002), pp. 30–42.
+[72] Keisuke Sakaguchi, Ronan Le Bras, Chandra Bhagavatula, and Yejin Choi. “Winogrande: An adversarial winograd
+schema challenge at scale”. In: Communications of the ACM 64.9 (2021), pp. 99–106.
+[73] Imanol Schlag, Kazuki Irie, and Jürgen Schmidhuber. “Linear transformers are secretly fast weight programmers”. In:
+International Conference on Machine Learning . PMLR. 2021, pp. 9355–9366.
+[74] JH Schmidhuber. “Learning to control fast-weight memories: An alternative to recurrent nets. Accepted for publication
+in”. In: Neural Computation (1992).
+[75] Jürgen Schmidhuber. “Reducing the ratio between learning complexity and number of time varying variables in fully
+recurrent nets”. In: ICANN’93: Proceedings of the International Conference on Artificial Neural Networks Amsterdam,
+The Netherlands 13–16 September 1993 3 . Springer. 1993, pp. 460–463.
+[76] Jürgen Schmidhuber and Sepp Hochreiter. “Long Short-term Memory”. In: Neural Computation MIT-Press (1997).
+[77] Mark Schöne, Babak Rahmani, Heiner Kremer, Fabian Falck, Hitesh Ballani, and Jannes Gladrow. “Implicit Language
+Models are RNNs: Balancing Parallelization and Expressivity”. In: arXiv preprint arXiv:2502.07827 (2025).
+[78] Shai Shalev-Shwartz et al. “Online learning and online convex optimization”. In: Foundations and Trends ®in Machine
+Learning 4.2 (2012), pp. 107–194.
+[79] Julien Siems, Timur Carstensen, Arber Zela, Frank Hutter, Massimiliano Pontil, and Riccardo Grazzi. “DeltaProduct:
+Increasing the Expressivity of DeltaNet Through Products of Householders”. In: arXiv preprint arXiv:2502.10297
+(2025).
+[80] Jimmy T.H. Smith, Andrew Warrington, and Scott Linderman. “Simplified State Space Layers for Sequence Modeling”.
+In:The Eleventh International Conference on Learning Representations . 2022. url:https://openreview.net/forum?
+id=Ai8Hw3AXqks .
+[81] Jimmy T.H. Smith, Andrew Warrington, and Scott Linderman. “Simplified State Space Layers for Sequence Modeling”.
+In:The Eleventh International Conference on Learning Representations . 2023. url:https://openreview.net/forum?
+id=Ai8Hw3AXqks .
+[82] Jianlin Su, Murtadha Ahmed, Yu Lu, Shengfeng Pan, Wen Bo, and Yunfeng Liu. “Roformer: Enhanced transformer
+with rotary position embedding”. In: Neurocomputing 568 (2024), p. 127063.
+[83] Yu Sun, Xinhao Li, Karan Dalal, Jiarui Xu, Arjun Vikram, Genghan Zhang, Yann Dubois, Xinlei Chen, Xiaolong
+Wang, Sanmi Koyejo, et al. “Learning to (learn at test time): Rnns with expressive hidden states”. In: arXiv preprint
+arXiv:2407.04620 (2024).
+[84] Yutao Sun, Li Dong, Shaohan Huang, Shuming Ma, Yuqing Xia, Jilong Xue, Jianyong Wang, and Furu Wei. “Retentive
+network: A successor to transformer for large language models”. In: arXiv preprint arXiv:2307.08621 (2023).
+[85] W Scott Terry. Learning and memory: Basic principles, processes, and procedures . Routledge, 2017.
+[86] Robert Tibshirani. “Regression shrinkage and selection via the lasso”. In: Journal of the Royal Statistical Society Series
+B: Statistical Methodology 58.1 (1996), pp. 267–288.
+[87] Matteo Tiezzi, Michele Casoni, Alessandro Betti, Tommaso Guidi, Marco Gori, and Stefano Melacci. “On the
+resurgence of recurrent models for long sequences: Survey and research opportunities in the transformer era”. In:
+arXiv preprint arXiv:2402.08132 (2024).
+[88] Hugo Touvron, Thibaut Lavril, Gautier Izacard, Xavier Martinet, Marie-Anne Lachaux, Timothee Lacroix, Baptiste
+Rozière, Naman Goyal, Eric Hambro, Faisal Azhar, et al. “Llama: Open and efficient foundation language models”. In:
+arXiv preprint arXiv:2302.13971 (2023).
+22
+
+[89] Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Łukasz Kaiser, and
+Illia Polosukhin. “Attention is All you Need”. In: Advances in Neural Information Processing Systems . Vol. 30.
+Curran Associates, Inc., 2017. url:https://proceedings.neurips.cc/paper_files/paper/2017/file/
+3f5ee243547dee91fbd053c1c4a845aa-Paper.pdf .
+[90] Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Łukasz Kaiser, and Illia
+Polosukhin. “Attention is All you Need”. In: Advances in Neural Information Processing Systems . Ed. by I. Guyon, U. Von
+Luxburg, S. Bengio, H. Wallach, R. Fergus, S. Vishwanathan, and R. Garnett. Vol. 30. Curran Associates, Inc., 2017. url:
+https://proceedings.neurips.cc/paper_files/paper/2017/file/3f5ee243547dee91fbd053c1c4a845aa-
+Paper.pdf .
+[91] Johannes Von Oswald, Maximilian Schlegel, Alexander Meulemans, Seijin Kobayashi, Eyvind Niklasson, Nicolas
+Zucchet, Nino Scherrer, Nolan Miller, Mark Sandler, Max Vladymyrov, et al. “Uncovering mesa-optimization
+algorithms in transformers”. In: arXiv preprint arXiv:2309.05858 (2023).
+[92] Ke Alexander Wang, Jiaxin Shi, and Emily B Fox. “Test-time regression: a unifying framework for designing sequence
+models with associative memory”. In: arXiv preprint arXiv:2501.12352 (2025).
+[93] Yingheng Wang, Zichen Wang, Gil Sadeh, Luca Zancato, Alessandro Achille, George Karypis, and Huzefa Rangwala.
+“Long-context Protein Language Model”. In: bioRxiv (2024), pp. 2024–10.
+[94] Songlin Yang, Jan Kautz, and Ali Hatamizadeh. “Gated Delta Networks: Improving Mamba2 with Delta Rule”. In:
+arXiv preprint arXiv:2412.06464 (2024).
+[95] Songlin Yang, Bailin Wang, Yikang Shen, Rameswar Panda, and Yoon Kim. “Gated Linear Attention Transformers
+with Hardware-Efficient Training”. In: Forty-first International Conference on Machine Learning . 2024. url:https:
+//openreview.net/forum?id=ia5XvxFUJT .
+[96] Songlin Yang, Bailin Wang, Yu Zhang, Yikang Shen, and Yoon Kim. “Parallelizing linear transformers with the delta
+rule over sequence length”. In: Advances in Neural Information Processing Systems 37 (2024), pp. 115491–115522.
+[97] Rowan Zellers, Ari Holtzman, Yonatan Bisk, Ali Farhadi, and Yejin Choi. “HellaSwag: Can a Machine Really Finish
+Your Sentence?” In: Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics . Ed. by
+Anna Korhonen, David Traum, and Lluis Marquez. Florence, Italy: Association for Computational Linguistics, July
+2019, pp. 4791–4800. doi:10.18653/v1/P19-1472 .url:https://aclanthology.org/P19-1472/ .
+[98] Biao Zhang and Rico Sennrich. “Root mean square layer normalization”. In: Advances in Neural Information Processing
+Systems 32 (2019).
+[99] Hao Zhang, Alexander C Berg, Michael Maire, and Jitendra Malik. “SVM-KNN: Discriminative nearest neighbor
+classification for visual category recognition”. In: 2006 IEEE Computer Society Conference on Computer Vision and
+Pattern Recognition (CVPR’06) . Vol. 2. IEEE. 2006, pp. 2126–2136.
+23
+
+A Additional Related Work
+Modern Linear RNNs. Recent efforts aim to overcome Transformers quadratic cost and limitations in long-context
+modeling by designing efficient recurrent alternatives (Tiezzi et al. 2024), mainly due to fast inference and training of
+such models. The first generation of models–such as RetNet (Sun et al. 2023), LRU (Orvieto et al. 2023), RWKV (Peng et al.
+2023), S5 (Smith et al. 2023), and S4 (Gu et al. 2022)–uses data-independent transition matrix mechanism with Hebbian-like
+update rule. The second generation of such models started to incorporate input-dependent parameters into such linear
+architectures (e.g., Griffin (De et al. 2024), SSMs (Behrouz et al. 2024b; Dao et al. 2024; Hasani et al. 2023), RWKV6 (Peng
+et al. 2024)), and/or use more expressive memory updating rule based on delta rule (Liu et al. 2024a; Peng et al. 2025b;
+Schlag et al. 2021; Yang et al. 2024a,c). The next generation of models, extend the memory architecture to deep models,
+while using delta-rule-like update rule (Sun et al. 2024), or momentum-based update rule (Behrouz et al. 2024c). Recently, to
+further enhance the performance of delta-rule-based sequence models, Siems et al. (2025) suggest using multiple gradient
+descent update per token, resulting in more expressive sequence models in state tracking tasks.
+In addition to the above fast linear recurrent sequence models, several studies have focused on (interpretable) non-linear
+RNNs (Csordás et al. 2024; Gonzalez et al. 2024; Karami et al. 2025; Lim et al. 2024; Merrill et al. 2024; Schöne et al. 2025;
+Von Oswald et al. 2023), and how their training can be faster (Gonzalez et al. 2024; Lim et al. 2024; Schöne et al. 2025).
+However, due to the recurrent nature of such models, parallelizing them in larger scales is still challenging.
+Fast Weight Programs. The idea of interpretation of linear layers as the key-value associative memory system backs
+to Hopfield networks (Hopfield 1982) and then fast weight programs, in which dynamic fast programs are incorporated
+into recurrent neural networks as writable memory (Schlag et al. 2021; Schmidhuber 1992; Schmidhuber 1993). The two
+learning rules of Hebbian (Hebb 2005) and delta rule (Prados et al. 1989) are the most popular learning rules for them,
+which have been extensively explored in the literature (Irie et al. 2021; Munkhdalai et al. 2019, 2017; Schlag et al. 2021;
+Schmidhuber 1992; Yang et al. 2024a,c).
+Test Time Training. The key ideas of learning at test time backs to early studies on local learning Bottou et al. 1992, in
+which each test data is trained on its neighbors before making a prediction (Gandelsman et al. 2022; Zhang et al. 2006).
+Later applying this idea on modern architectures, it has shown promising performance in diverse downstream tasks such
+as vision tasks (Jain et al. 2011; Mullapudi et al. 2019), video generation (Dalal et al. 2025), etc., mostly due to their ability to
+mitigate out-of-distribution samples.
+Hopfield Networks. We build Miras based on the concept of associative memory in its broad form, where we learn an
+underlying mapping between keys and values. One of the earliest studies that discuss building neural architectures based
+on associative memory is Hopfield Networks (Hopfield 1982), in which associative memory is defined as the minimizing
+the energy function required to store keys and values. While traditional Hopfield networks has limited applicability in
+recent years (mainly due to limited capacity of vector-valued memory and energy function), several recent studies aim to
+improve their capacity by various techniques (Krotov 2021; Krotov et al. 2016; Li et al. 2024b), including extending the
+energy function of such models based on exponential kernels (Krotov et al. 2016; Lucibello et al. 2024), and discuss their
+connection to Transformers (Hu et al. 2024; Ramsauer et al. 2021).
+Unifying Frameworks. In recent years, there have been growing efforts to understand the underlying mechanism of
+sequence models and unify (a subset of) them through a single perspective. Dao et al. (2024) present SSD framework
+to connect linear Transformers and (a subset of) linear recurrent models through the lens of associative operators and
+structured matrices. The SSD framework, however, is limited to models with vector or matrix-valued memory that are
+updated using a Hebbian-like update rules. Later, Liu et al. (2024a) present an online learning perspective on (a subset of)
+linear recurrent models. While this framework can also explain more expressive recurrent models based on delta rule, it is
+limited to online learners (i.e., models that optimize their internal associative memory using stochastic optimizers, such as
+stochastic gradient descent) with matrix-valued memory. Several modern sequence models, such as Transformers (Vaswani
+et al. 2017b) or Titans (Behrouz et al. 2024c) cannot be expressed in this framework. Sun et al. (2024) further provide a
+unifying perspective on how linear and softmax attention are respectively parametric and non-parameteric solutions of
+(kernel) regression loss but consider other modern linear RNNs outside of this class of models, mainly due to limiting the
+objective to be regression loss. Recently, in a concurrent work to ours, Wang et al. (2025) also force models to have the
+same attentional bias objective and show that with additional simplification of modern RNNs (e.g., RetNet (Sun et al. 2023),
+Mamba (Dao et al. 2024)) they approximately place in the same class of models that internally optimize regression loss.
+24
+
+However, this simplification, fully change the understanding of underlying update rules in these models. For example,
+contrary to Wang et al. (2025), Miras can distinguish models with Hebbian-like update (with dot product similarity) and
+delta rule update (with regression loss). Furthermore, all presented sequence models in this work (e.g., Moneta ,Memora ,
+Yaad ) as well as models like HGRN2 (Qin et al. 2024) are placed outside of this class of models, due to their different
+attentional bias.
+B Proof of Proposition 3.2
+Here we present the proof of Proposition 3.2. For the sake of completeness, let us first re-state this Proposition.
+Proposition 3.2. Let𝜂𝑡=𝜂and defineℎ𝑡(𝑊):=Í𝑡−1
+𝑖=1bℓ𝑖(𝑊;k𝑖,v𝑖)+1
+𝜂𝑅(𝑊). AssumeW=R𝑑and the function ℎ𝑡(𝑊)
+is strictly convex in 𝑊and letDℎ(·,·)be the Bregman divergence defined by function ℎ(·), i.e.,Dℎ(𝑊,𝑊′)=ℎ(𝑊)−
+ℎ(𝑊′)−⟨∇ℎ(𝑊′),𝑊−𝑊′⟩. Set Ret𝑡(𝑊,𝑊′)=Dℎ(𝑊,𝑊′)andeℓ𝑡(𝑊;𝑥𝑡)=bℓ𝑡(𝑊;𝑥𝑡)in(Learning-Retaining Viewpoint) .
+Then, the update rule in (Learning-Retaining Viewpoint) is equivalent to the update rule in (FTRL Viewpoint).
+Proof. Let{b𝑊1,b𝑊2,...}be the sequence of parameters obtained by (FTRL Viewpoint) and{e𝑊1,e𝑊2,...}be the sequence
+of parameters obtained by (Learning-Retaining Viewpoint) . To show both update rules are equivalent, it suffices to show
+that the above two sequences are the same if they are initialized at the same point. We prove this statement by induction.
+First of all, since both sequences are initialized at the same point, the induction base is satisfied (i.e. e𝑊1=b𝑊1. Now, assume
+by induction hypothesis that
+e𝑊𝑡−1=b𝑊𝑡−1. (33)
+To complete the induction, we need to show e𝑊𝑡=b𝑊𝑡. To this end, notice that, by (Learning-Retaining Viewpoint) , we
+have
+e𝑊𝑡=arg min
+𝑊eℓ𝑡(𝑊,k𝑡,v𝑡)+Ret𝑡(𝑊,e𝑊𝑡−1)
+Using the choice of the Attentional Bias and the Retention function in the Proposition, we obtain
+e𝑊𝑡=arg min
+𝑊bℓ𝑡(𝑊,k𝑡,v𝑡)+𝑡−1∑︁
+𝑖=1bℓ𝑖(𝑊,k𝑖,v𝑖)+1
+𝜂𝑅(𝑊)−𝑡−1∑︁
+𝑖=1bℓ𝑖(e𝑊𝑡−1,k𝑖,v𝑖)
+−1
+𝜂𝑅(e𝑊𝑡−1)−*𝑡−1∑︁
+𝑖=1∇bℓ𝑖(e𝑊𝑡−1,k𝑖,v𝑖)+1
+𝜂∇𝑅(e𝑊𝑡−1),𝑊−e𝑊𝑡−1+
+.(34)
+Ignoring the constant terms and using the induction hypothesis (33), we get
+e𝑊𝑡=arg min
+𝑊bℓ𝑡(𝑊,k𝑡,v𝑡)+𝑡−1∑︁
+𝑖=1bℓ𝑖(𝑊,k𝑖,v𝑖)+1
+𝜂𝑅(𝑊)
+−*𝑡−1∑︁
+𝑖=1∇bℓ𝑖(b𝑊𝑡−1,k𝑖,v𝑖)+1
+𝜂∇𝑅(b𝑊𝑡−1),𝑊−b𝑊𝑡−1+
+.(35)
+On the other hand, recall that {b𝑊1,b𝑊2,...}is obtained by (FTRL Viewpoint). Therefore, we have
+b𝑊𝑡−1=arg min
+𝑊𝑡−1∑︁
+𝑖=1bℓ𝑖(𝑊;k𝑖,v𝑖)+1
+𝜂R𝑡(𝑊).
+Thus, we have
+𝑡−1∑︁
+𝑖=1∇bℓ𝑖(𝑊𝑡−1,k𝑖,v𝑖)+1
+𝜂∇𝑅(𝑊𝑡−1)=0. (36)
+Combining (36) and (35), we obtain
+e𝑊𝑡=arg min
+𝑊𝑡∑︁
+𝑖=1bℓ𝑖(𝑊,k𝑖,v𝑖)+1
+𝜂𝑅(𝑊).
+This implies e𝑊𝑡=b𝑊𝑡, which completes the proof. □
+25
+
+C Experimental Setup
+We perform experimental evaluation on the language modeling (Merity et al. 2017; Paperno et al. 2016), common-sense
+reasoning (Bisk et al. 2020; Clark et al. 2019; Clark et al. 2018; Sakaguchi et al. 2021; Zellers et al. 2019), and long context
+needle-in-haystack tasks (Hsieh et al. 2024). We compare our models with the state-of-the-art linear recurrent models,
+Transformers, and hybrid models (recurrent + attention). More specifically we compare with Transformer++ (Touvron et al.
+2023), RetNet (Sun et al. 2023), Gated Linear Attention (GLA) (Yang et al. 2024b), Mamba (Gu et al. 2024), Mamba2 (Dao
+et al. 2024), DeltaNet (Yang et al. 2024c), TTT (Sun et al. 2024), and Gated DeltaNet (Yang et al. 2024a).
+Table 5: Architectural Details.
+Model Block Dim Head Peak LR Token
+170M 12 768 16 3e-3 15B
+340M 24 1024 16 1.5e-3 15B
+780M 24 1536 16 1.25e-3 30B
+26
