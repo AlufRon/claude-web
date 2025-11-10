@@ -377,17 +377,134 @@ def ttt(self, inputs):
    - But `W_t` was already replaced with `W_{t+n}`!
    - Applies `W_t`'s gradient to `W_{t+n}` (incorrect base value)
 
+### The Architectural Incompatibility
+
+**The fundamental issue: `self.W1` serves two conflicting roles simultaneously**
+
+For sequential chunk training (where chunks should continue from previous state), you need:
+
+1. **Trainable base weights** (W_base): Learned initialization, updated by optimizer
+2. **Persistent state** (W_state): Current TTT state, carries across chunks
+
+**Current implementation conflates these**, using `self.W1` for BOTH:
+- As `nn.Parameter` → Trainable by optimizer (role #1)
+- Overwritten each forward → Persistent state (role #2)
+
+**This creates the gradient mismatch.**
+
+### Comparison with Video-DiT
+
+**Video-DiT** (`ttt-video-dit/ttt/models/ssm/ttt_layer.py:434-473`):
+```python
+def ttt(self, inputs):
+    # Tile trainable parameter
+    W1_states = torch.tile(self.W1.unsqueeze(0), dims=(B, 1, 1, 1))
+
+    # Run TTT
+    XQW_batch = ttt_mlp(..., W1_states, ...)
+
+    return XQW_batch
+    # ← NO PERSISTENT STATES! Each forward starts from learned self.W1
+```
+
+**Data flow**:
+- Batch N: `self.W1` (learned) → TTT → output
+- Backward: Gradients to `self.W1` ✓
+- Optimizer: Updates `self.W1` ✓
+- Batch N+1: Starts from **updated `self.W1`** (not from batch N's final state)
+
+**Result**: Each batch is independent. Optimizer can train W1 correctly.
+
+**Moshi-TTT with persistent_states=True**:
+```python
+def ttt(self, inputs):
+    W1_states = torch.tile(self.W1.unsqueeze(0), dims=(B, 1, 1, 1))
+    XQW_batch, final_states = ttt_mlp_with_states(..., W1_states, ...)
+
+    # Overwrite parameter
+    with torch.no_grad():
+        self.W1.data.copy_(final_states["W1_states"][0])
+
+    return XQW_batch
+```
+
+**Data flow**:
+- Chunk N: `self.W1=A` → TTT → `final=Z` → **copy Z to self.W1.data**
+- Backward: Gradients for `A`, but `self.W1` now contains `Z`! ✗
+- Optimizer: Updates `Z` using gradients for `A` (mismatch!) ✗
+- Chunk N+1: Starts from `Z` (persistent state works)
+
+**Result**: Persistent state works, but gradient flow is broken.
+
+### The Correct Architecture for Sequential Training
+
+To support both trainable base weights AND persistent states, you need **separation**:
+
+```python
+class TTTMLP:
+    def __init__(self, ...):
+        # Trainable base weights (learned by optimizer)
+        self.W1_base = nn.Parameter(torch.normal(0, 0.02, ...))
+        self.b1_base = nn.Parameter(torch.zeros(...))
+        self.W2_base = nn.Parameter(torch.normal(0, 0.02, ...))
+        self.b2_base = nn.Parameter(torch.zeros(...))
+
+        # Persistent state (updated by TTT, NOT by optimizer)
+        self.register_buffer('W1_state', None)  # Initialized on first use
+        self.register_buffer('b1_state', None)
+        self.register_buffer('W2_state', None)
+        self.register_buffer('b2_state', None)
+
+    def reset_ttt_state(self):
+        """Call at start of new file/conversation"""
+        self.W1_state = self.W1_base.detach().clone()
+        self.b1_state = self.b1_base.detach().clone()
+        self.W2_state = self.W2_base.detach().clone()
+        self.b2_state = self.b2_base.detach().clone()
+
+    def ttt(self, inputs):
+        # Initialize state from base weights if needed
+        if self.W1_state is None:
+            self.reset_ttt_state()
+
+        # Use persistent state as initialization
+        W1_init = self.W1_state.unsqueeze(0).expand(B, -1, -1, -1)
+        b1_init = self.b1_state.unsqueeze(0).expand(B, -1, -1, -1)
+        # ... same for W2, b2
+
+        # Run TTT (gradients flow to W1_base through initial state dependency)
+        XQW_batch, final_states = ttt_mlp_with_states(..., W1_init, ...)
+
+        # Update persistent state for next chunk
+        with torch.no_grad():
+            self.W1_state.copy_(final_states["W1_states"][0])
+            self.b1_state.copy_(final_states["b1_states"][0])
+            # ... same for W2, b2
+
+        return XQW_batch
+```
+
+**Gradient flow** (CORRECT):
+1. `W1_init` comes from `W1_state` (buffer)
+2. BUT `W1_state` was initialized from `W1_base` (parameter) via `reset_ttt_state()`
+3. Gradients flow to `W1_base` through the dependency chain
+4. Optimizer updates `W1_base` ✓
+5. Persistent `W1_state` maintains across chunks ✓
+6. Call `reset_ttt_state()` at start of new file to reinitialize from learned base
+
+**This separates concerns**:
+- `W1_base`: What the outer loop learns (good initialization)
+- `W1_state`: What TTT adapts during a sequence (test-time training)
+
 ### Impact
 
-**Major training bug**:
+**Major training bug in current implementation**:
 - The "learned initial weights" `W₀` that should be trained by the outer loop cannot be properly optimized
 - Each iteration tries to optimize `W_t`, but the parameter was already modified to `W_{t+n}`
 - Optimizer updates are applied to the wrong base values
 - Gradient descent on initial weights is corrupted
 
-**Correct design** would be:
-- Store persistent states in **buffers** (not parameters), OR
-- Don't use persistent_states during training (only during inference)
+**Current design is fundamentally incompatible** with having trainable W1/W2 parameters when `persistent_states=True`
 
 ### Video-DiT Comparison
 
@@ -425,9 +542,11 @@ class TTTMLP(TTTBase):
    - One-line code change in `ln_reconstruction_target()`
    - Must retrain all checkpoints
 
-3. **Issue #4 (Gradient Flow)**: 🟠 **Design decision needed**
-   - If persistent_states only for inference: Document this clearly
-   - If needed for training: Redesign state persistence mechanism
+3. **Issue #4 (Gradient Flow)**: 🔴 **Architectural redesign required**
+   - **Current design is fundamentally broken**: `self.W1` serves two conflicting roles (trainable parameter + persistent state)
+   - **Quick fix**: Disable persistent_states during training (`persistent_states=False`)
+   - **Proper fix**: Separate W_base (trainable parameters) from W_state (buffers)
+   - See "The Correct Architecture for Sequential Training" section above for implementation
 
 4. **Issue #3 (Batch Size)**: 🟡 **Document or fix**
    - Add assertion: `assert B == 1 when persistent_states=True`
@@ -435,9 +554,14 @@ class TTTMLP(TTTBase):
 
 ### Next Steps
 
-1. **Immediate**: Fix Issue #2 (normalization bug)
-2. **Short-term**: Clarify persistent_states usage (inference-only or training-compatible?)
-3. **Long-term**: Redesign attention mechanism to solve Issue #1 (ring buffer)
+1. **Immediate**:
+   - Fix Issue #2 (normalization bug) - one line change
+   - **CRITICAL**: Set `persistent_states=False` in training config OR implement proper W_base/W_state separation
+2. **Short-term**:
+   - Implement proper persistent state architecture (separate parameters from buffers)
+   - Add file/conversation boundary detection to reset states appropriately
+3. **Long-term**:
+   - Redesign attention mechanism to solve Issue #1 (ring buffer)
 
 ### Files Verified
 
