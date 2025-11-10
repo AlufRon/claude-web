@@ -1,0 +1,104 @@
+# LibriLight Resume Training Configuration
+# Purpose: Continue interrupted LibriLight pre-training from checkpoint
+# Use Case: Training was interrupted, resume from where it left off
+# IMPORTANT: Loads optimizer state and continues from saved step
+
+run_dir: /sise/eliyanac-group/ron_al/librilight_ttt_pretrain_continued
+
+# Data configuration (same as initial training)
+data:
+  train_data: /sise/eliyanac-group/ron_al/librilight/extracted_medium/medium/librilight.jsonl
+  eval_data: ""
+  shuffle: false
+
+duration_sec: 60
+
+# Model paths - will be loaded from checkpoint
+moshi_paths:
+  hf_repo_id: kyutai/moshiko-pytorch-bf16
+  mimi_path: null
+  moshi_path: null
+  tokenizer_path: null
+  config_path: null
+
+# Training hyperparameters (same as initial training)
+batch_size: 4
+num_microbatches: 1
+max_steps: 10000  # Same target, will continue from saved step
+log_freq: 10
+ckpt_freq: 1000
+num_ckpt_keep: 3
+do_ckpt: true
+do_eval: false
+seed: 42
+
+# Text weighting (CRITICAL - must match initial training)
+first_codebook_weight_multiplier: 1.0
+text_padding_weight: 0.001  # Very small weight for text (audio-only, avoid NaN)
+
+# Optimizer settings (same as initial training)
+optim:
+  lr: 1e-4
+  weight_decay: 0.1
+  pct_start: 0.05
+
+# LoRA configuration (same as initial training)
+lora:
+  enable: true
+  rank: 64
+  scaling: 2.0
+  ft_embed: false
+
+full_finetuning: false
+save_adapters: true
+
+# TTT Configuration (must match initial training)
+ttt:
+  enable: true
+  layers: middle
+  base_lr: 1.0
+  mini_batch_size: 16
+  persistent_states: true
+  initial_gating_alpha: 0.1
+
+  # TTT-MLP Architecture (must match initial training)
+  ttt_mlp_layers: 5
+  ttt_mlp_hidden_dims: null
+  ttt_mlp_expansion_factor: 4.0
+
+  # Inner loop diagnostics
+  log_inner_loop_losses: false
+  inner_loop_log_interval: 10
+  save_inner_loop_plots: false
+  inner_loop_plot_dir: ./evaluation_plots/inner_loop
+
+  # LibriLight evaluation settings
+  optimize_chunk_size: true
+  chunk_size: null
+  max_chunk_size: 50
+  prefer_efficiency: true
+
+# Efficiency settings
+gradient_checkpointing: true
+max_norm: 1.0
+
+# Weights & Biases logging
+wandb:
+  project: moshi-ttt-librilight
+  offline: false
+  key: null
+  run_name: librilight_ttt_pretrain_60s_resumed
+
+# ============================================================
+# CHECKPOINT RESUMING (CRITICAL - this is the key difference)
+# ============================================================
+# CHANGE THIS PATH to your actual checkpoint directory!
+# Example: /sise/eliyanac-group/ron_al/librilight_ttt_pretrain/checkpoints/checkpoint_005000/consolidated/
+resume_from: /sise/eliyanac-group/ron_al/librilight_ttt_pretrain/checkpoints/checkpoint_005000/consolidated
+
+# Resume settings for continuing training
+reset_optimizer: false  # Keep optimizer state (momentum, etc.)
+reset_step: false       # Continue from saved step number
+
+param_dtype: bfloat16
+overwrite_run_dir: false

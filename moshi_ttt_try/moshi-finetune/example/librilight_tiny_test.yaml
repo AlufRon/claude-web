@@ -1,0 +1,76 @@
+# LibriLight Tiny Test Configuration
+# Purpose: Minimal test to verify LibriLight data loading works
+# Very small settings to fit in GPU memory
+
+run_dir: /sise/eliyanac-group/ron_al/librilight_ttt_tiny_test
+
+# Data configuration
+data:
+  train_data: /sise/eliyanac-group/ron_al/librilight/extracted_medium/medium/librilight.jsonl
+  eval_data: ""
+  shuffle: false
+
+duration_sec: 5  # Very short sequences
+
+# Model paths
+moshi_paths:
+  hf_repo_id: kyutai/moshiko-pytorch-bf16
+
+# Training hyperparameters - MINIMAL
+batch_size: 1
+num_microbatches: 1
+max_steps: 2  # Just 2 steps
+log_freq: 1
+ckpt_freq: 2
+num_ckpt_keep: 1
+do_ckpt: true
+do_eval: false
+seed: 42
+
+# Text weighting
+first_codebook_weight_multiplier: 1.0
+text_padding_weight: 0.001  # Very small weight (avoid NaN)
+
+# Optimizer
+optim:
+  lr: 1e-4
+  weight_decay: 0.1
+  pct_start: 0.05
+
+# LoRA - smaller rank
+lora:
+  enable: true
+  rank: 32  # Reduced from 64
+  scaling: 2.0
+  ft_embed: false
+
+full_finetuning: false
+save_adapters: true
+
+# TTT - reduced settings
+ttt:
+  enable: true
+  layers: "31"  # Just one layer
+  base_lr: 1.0
+  mini_batch_size: 8  # Reduced from 16
+  persistent_states: true
+  initial_gating_alpha: 0.1
+
+  ttt_mlp_layers: 2  # Use 2-layer instead of 5
+  ttt_mlp_expansion_factor: 2.0  # Reduced from 4.0
+
+# Efficiency
+gradient_checkpointing: true
+max_norm: 1.0
+
+# Wandb
+wandb:
+  project: null
+
+# Checkpoint resuming
+resume_from: null
+reset_optimizer: false
+reset_step: false
+
+param_dtype: bfloat16
+overwrite_run_dir: true

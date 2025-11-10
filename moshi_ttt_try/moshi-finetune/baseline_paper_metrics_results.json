@@ -1,0 +1,658 @@
+{
+  "sblimp_accuracy": 0.545,
+  "sblimp_samples": 1000,
+  "swuggy_accuracy": 0.6335,
+  "swuggy_samples": 2000,
+  "tstory_accuracy": 0.8006413682522715,
+  "tstory_samples": 1871,
+  "sstory_accuracy": 0.6092998396579369,
+  "sstory_samples": 1871,
+  "librilight_perplexity_8k": 6336.9645741972345,
+  "librilight_perplexity_16k": 16122.00837845457,
+  "librilight_perplexity_24k": 1651.04856537835,
+  "librilight_slope": 1.8275712055320333e-05,
+  "librilight_samples": 129574,
+  "paper_metrics_avg": 0.6471103019775521,
+  "librilight_progression": [
+    {
+      "position": 1000,
+      "loss": 5.9366,
+      "perplexity": 378.66
+    },
+    {
+      "position": 1000,
+      "loss": 5.9324,
+      "perplexity": 377.04
+    },
+    {
+      "position": 1000,
+      "loss": 5.9675,
+      "perplexity": 390.53
+    },
+    {
+      "position": 2000,
+      "loss": 5.8463,
+      "perplexity": 345.94
+    },
+    {
+      "position": 2000,
+      "loss": 5.9235,
+      "perplexity": 373.74
+    },
+    {
+      "position": 2000,
+      "loss": 6.0992,
+      "perplexity": 445.48
+    },
+    {
+      "position": 3000,
+      "loss": 5.8302,
+      "perplexity": 340.41
+    },
+    {
+      "position": 3000,
+      "loss": 6.0118,
+      "perplexity": 408.2
+    },
+    {
+      "position": 3000,
+      "loss": 6.105,
+      "perplexity": 448.09
+    },
+    {
+      "position": 4000,
+      "loss": 5.9185,
+      "perplexity": 371.86
+    },
+    {
+      "position": 4000,
+      "loss": 6.1277,
+      "perplexity": 458.36
+    },
+    {
+      "position": 4000,
+      "loss": 6.2099,
+      "perplexity": 497.64
+    },
+    {
+      "position": 5000,
+      "loss": 6.0676,
+      "perplexity": 431.64
+    },
+    {
+      "position": 5000,
+      "loss": 6.2638,
+      "perplexity": 525.21
+    },
+    {
+      "position": 5000,
+      "loss": 6.304,
+      "perplexity": 546.77
+    },
+    {
+      "position": 6000,
+      "loss": 6.192,
+      "perplexity": 488.82
+    },
+    {
+      "position": 6000,
+      "loss": 6.3481,
+      "perplexity": 571.38
+    },
+    {
+      "position": 6000,
+      "loss": 6.4198,
+      "perplexity": 613.85
+    },
+    {
+      "position": 7000,
+      "loss": 6.2653,
+      "perplexity": 525.97
+    },
+    {
+      "position": 7000,
+      "loss": 6.336,
+      "perplexity": 564.54
+    },
+    {
+      "position": 7000,
+      "loss": 6.5292,
+      "perplexity": 684.87
+    },
+    {
+      "position": 8000,
+      "loss": 6.3741,
+      "perplexity": 586.46
+    },
+    {
+      "position": 8000,
+      "loss": 6.4071,
+      "perplexity": 606.15
+    },
+    {
+      "position": 8000,
+      "loss": 6.6357,
+      "perplexity": 761.8
+    },
+    {
+      "position": 9000,
+      "loss": 6.4659,
+      "perplexity": 642.84
+    },
+    {
+      "position": 9000,
+      "loss": 6.6316,
+      "perplexity": 758.69
+    },
+    {
+      "position": 9000,
+      "loss": 6.7807,
+      "perplexity": 880.72
+    },
+    {
+      "position": 10000,
+      "loss": 6.5961,
+      "perplexity": 732.27
+    },
+    {
+      "position": 10000,
+      "loss": 6.8584,
+      "perplexity": 951.84
+    },
+    {
+      "position": 10000,
+      "loss": 6.9379,
+      "perplexity": 1030.56
+    },
+    {
+      "position": 11000,
+      "loss": 6.6973,
+      "perplexity": 810.21
+    },
+    {
+      "position": 11000,
+      "loss": 7.0017,
+      "perplexity": 1098.48
+    },
+    {
+      "position": 11000,
+      "loss": 7.0378,
+      "perplexity": 1138.92
+    },
+    {
+      "position": 12000,
+      "loss": 6.786,
+      "perplexity": 885.35
+    },
+    {
+      "position": 12000,
+      "loss": 7.1183,
+      "perplexity": 1234.32
+    },
+    {
+      "position": 12000,
+      "loss": 7.1206,
+      "perplexity": 1237.2
+    },
+    {
+      "position": 13000,
+      "loss": 6.8869,
+      "perplexity": 979.33
+    },
+    {
+      "position": 13000,
+      "loss": 7.1952,
+      "perplexity": 1333.01
+    },
+    {
+      "position": 13000,
+      "loss": 7.198,
+      "perplexity": 1336.74
+    },
+    {
+      "position": 14000,
+      "loss": 6.9874,
+      "perplexity": 1082.91
+    },
+    {
+      "position": 14000,
+      "loss": 7.2781,
+      "perplexity": 1448.18
+    },
+    {
+      "position": 14000,
+      "loss": 7.2565,
+      "perplexity": 1417.32
+    },
+    {
+      "position": 15000,
+      "loss": 7.0719,
+      "perplexity": 1178.33
+    },
+    {
+      "position": 15000,
+      "loss": 7.3625,
+      "perplexity": 1575.76
+    },
+    {
+      "position": 15000,
+      "loss": 7.3189,
+      "perplexity": 1508.47
+    },
+    {
+      "position": 16000,
+      "loss": 7.1644,
+      "perplexity": 1292.53
+    },
+    {
+      "position": 16000,
+      "loss": 7.4418,
+      "perplexity": 1705.79
+    },
+    {
+      "position": 16000,
+      "loss": 7.3899,
+      "perplexity": 1619.6
+    },
+    {
+      "position": 17000,
+      "loss": 7.2565,
+      "perplexity": 1417.3
+    },
+    {
+      "position": 17000,
+      "loss": 7.5129,
+      "perplexity": 1831.49
+    },
+    {
+      "position": 17000,
+      "loss": 7.4523,
+      "perplexity": 1723.88
+    },
+    {
+      "position": 18000,
+      "loss": 7.3439,
+      "perplexity": 1546.8
+    },
+    {
+      "position": 18000,
+      "loss": 7.5803,
+      "perplexity": 1959.14
+    },
+    {
+      "position": 18000,
+      "loss": 7.5209,
+      "perplexity": 1846.24
+    },
+    {
+      "position": 19000,
+      "loss": 7.4265,
+      "perplexity": 1679.85
+    },
+    {
+      "position": 19000,
+      "loss": 7.6324,
+      "perplexity": 2064.0
+    },
+    {
+      "position": 19000,
+      "loss": 7.578,
+      "perplexity": 1954.79
+    },
+    {
+      "position": 20000,
+      "loss": 7.4936,
+      "perplexity": 1796.58
+    },
+    {
+      "position": 20000,
+      "loss": 7.6823,
+      "perplexity": 2169.61
+    },
+    {
+      "position": 20000,
+      "loss": 7.6289,
+      "perplexity": 2056.82
+    },
+    {
+      "position": 21000,
+      "loss": 7.5471,
+      "perplexity": 1895.2
+    },
+    {
+      "position": 21000,
+      "loss": 7.7367,
+      "perplexity": 2291.0
+    },
+    {
+      "position": 21000,
+      "loss": 7.6785,
+      "perplexity": 2161.37
+    },
+    {
+      "position": 22000,
+      "loss": 7.5891,
+      "perplexity": 1976.51
+    },
+    {
+      "position": 22000,
+      "loss": 7.7765,
+      "perplexity": 2383.95
+    },
+    {
+      "position": 22000,
+      "loss": 7.7179,
+      "perplexity": 2248.34
+    },
+    {
+      "position": 23000,
+      "loss": 7.6168,
+      "perplexity": 2032.08
+    },
+    {
+      "position": 23000,
+      "loss": 7.8071,
+      "perplexity": 2458.06
+    },
+    {
+      "position": 23000,
+      "loss": 7.7565,
+      "perplexity": 2336.69
+    },
+    {
+      "position": 24000,
+      "loss": 7.6332,
+      "perplexity": 2065.61
+    },
+    {
+      "position": 24000,
+      "loss": 7.8275,
+      "perplexity": 2508.62
+    },
+    {
+      "position": 24000,
+      "loss": 7.7876,
+      "perplexity": 2410.51
+    },
+    {
+      "position": 25000,
+      "loss": 7.6327,
+      "perplexity": 2064.56
+    },
+    {
+      "position": 25000,
+      "loss": 7.8482,
+      "perplexity": 2561.07
+    },
+    {
+      "position": 25000,
+      "loss": 7.8189,
+      "perplexity": 2487.12
+    },
+    {
+      "position": 26000,
+      "loss": 7.6385,
+      "perplexity": 2076.61
+    },
+    {
+      "position": 26000,
+      "loss": 7.8548,
+      "perplexity": 2578.18
+    },
+    {
+      "position": 26000,
+      "loss": 7.8432,
+      "perplexity": 2548.36
+    },
+    {
+      "position": 27000,
+      "loss": 7.6507,
+      "perplexity": 2102.17
+    },
+    {
+      "position": 27000,
+      "loss": 7.8601,
+      "perplexity": 2591.81
+    },
+    {
+      "position": 27000,
+      "loss": 7.847,
+      "perplexity": 2557.98
+    },
+    {
+      "position": 28000,
+      "loss": 7.6515,
+      "perplexity": 2103.83
+    },
+    {
+      "position": 28000,
+      "loss": 7.8644,
+      "perplexity": 2602.88
+    },
+    {
+      "position": 28000,
+      "loss": 7.8585,
+      "perplexity": 2587.69
+    },
+    {
+      "position": 29000,
+      "loss": 7.6558,
+      "perplexity": 2112.89
+    },
+    {
+      "position": 29000,
+      "loss": 7.8665,
+      "perplexity": 2608.52
+    },
+    {
+      "position": 29000,
+      "loss": 7.8632,
+      "perplexity": 2599.91
+    },
+    {
+      "position": 30000,
+      "loss": 7.6646,
+      "perplexity": 2131.57
+    },
+    {
+      "position": 30000,
+      "loss": 7.8645,
+      "perplexity": 2603.14
+    },
+    {
+      "position": 30000,
+      "loss": 7.8758,
+      "perplexity": 2632.72
+    },
+    {
+      "position": 31000,
+      "loss": 7.6758,
+      "perplexity": 2155.6
+    },
+    {
+      "position": 31000,
+      "loss": 7.8682,
+      "perplexity": 2612.83
+    },
+    {
+      "position": 31000,
+      "loss": 7.8836,
+      "perplexity": 2653.46
+    },
+    {
+      "position": 32000,
+      "loss": 7.686,
+      "perplexity": 2177.65
+    },
+    {
+      "position": 32000,
+      "loss": 7.8706,
+      "perplexity": 2619.16
+    },
+    {
+      "position": 32000,
+      "loss": 7.8852,
+      "perplexity": 2657.68
+    },
+    {
+      "position": 33000,
+      "loss": 7.6966,
+      "perplexity": 2200.92
+    },
+    {
+      "position": 33000,
+      "loss": 7.8696,
+      "perplexity": 2616.6
+    },
+    {
+      "position": 33000,
+      "loss": 7.8885,
+      "perplexity": 2666.46
+    },
+    {
+      "position": 34000,
+      "loss": 7.7132,
+      "perplexity": 2237.71
+    },
+    {
+      "position": 34000,
+      "loss": 7.8695,
+      "perplexity": 2616.37
+    },
+    {
+      "position": 34000,
+      "loss": 7.8916,
+      "perplexity": 2674.73
+    },
+    {
+      "position": 35000,
+      "loss": 7.7251,
+      "perplexity": 2264.51
+    },
+    {
+      "position": 35000,
+      "loss": 7.8755,
+      "perplexity": 2631.94
+    },
+    {
+      "position": 35000,
+      "loss": 7.8907,
+      "perplexity": 2672.28
+    },
+    {
+      "position": 36000,
+      "loss": 7.7348,
+      "perplexity": 2286.63
+    },
+    {
+      "position": 36000,
+      "loss": 7.8812,
+      "perplexity": 2646.93
+    },
+    {
+      "position": 36000,
+      "loss": 7.895,
+      "perplexity": 2683.93
+    },
+    {
+      "position": 37000,
+      "loss": 7.7435,
+      "perplexity": 2306.45
+    },
+    {
+      "position": 37000,
+      "loss": 7.8895,
+      "perplexity": 2669.16
+    },
+    {
+      "position": 37000,
+      "loss": 7.9004,
+      "perplexity": 2698.29
+    },
+    {
+      "position": 38000,
+      "loss": 7.7537,
+      "perplexity": 2330.22
+    },
+    {
+      "position": 38000,
+      "loss": 7.8965,
+      "perplexity": 2687.76
+    },
+    {
+      "position": 38000,
+      "loss": 7.9062,
+      "perplexity": 2714.15
+    },
+    {
+      "position": 39000,
+      "loss": 7.7586,
+      "perplexity": 2341.67
+    },
+    {
+      "position": 39000,
+      "loss": 7.9014,
+      "perplexity": 2701.13
+    },
+    {
+      "position": 39000,
+      "loss": 7.9043,
+      "perplexity": 2708.99
+    },
+    {
+      "position": 40000,
+      "loss": 7.7593,
+      "perplexity": 2343.37
+    },
+    {
+      "position": 40000,
+      "loss": 7.9071,
+      "perplexity": 2716.6
+    },
+    {
+      "position": 40000,
+      "loss": 7.9094,
+      "perplexity": 2722.77
+    },
+    {
+      "position": 41000,
+      "loss": 7.7577,
+      "perplexity": 2339.43
+    },
+    {
+      "position": 41000,
+      "loss": 7.9094,
+      "perplexity": 2722.85
+    },
+    {
+      "position": 41000,
+      "loss": 7.918,
+      "perplexity": 2746.21
+    },
+    {
+      "position": 42000,
+      "loss": 7.7588,
+      "perplexity": 2342.12
+    },
+    {
+      "position": 42000,
+      "loss": 7.9275,
+      "perplexity": 2772.47
+    },
+    {
+      "position": 43000,
+      "loss": 7.7574,
+      "perplexity": 2338.77
+    },
+    {
+      "position": 43000,
+      "loss": 7.9381,
+      "perplexity": 2802.03
+    },
+    {
+      "position": 44000,
+      "loss": 7.9452,
+      "perplexity": 2821.91
+    }
+  ]
+}

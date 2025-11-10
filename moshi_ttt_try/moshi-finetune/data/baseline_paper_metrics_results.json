@@ -1,0 +1,16 @@
+{
+  "sblimp_accuracy": 0.64,
+  "sblimp_samples": 50,
+  "swuggy_accuracy": 0.7,
+  "swuggy_samples": 50,
+  "tstory_accuracy": 0.86,
+  "tstory_samples": 50,
+  "sstory_accuracy": 0.58,
+  "sstory_samples": 50,
+  "librilight_perplexity_8k": 3.8483760080133944,
+  "librilight_perplexity_16k": 0.0,
+  "librilight_perplexity_24k": 0.0,
+  "librilight_slope": 3.940155932934934e-05,
+  "librilight_samples": 14994,
+  "paper_metrics_avg": 0.695
+}

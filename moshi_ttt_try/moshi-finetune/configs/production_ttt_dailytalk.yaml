@@ -1,0 +1,97 @@
+# Production TTT-Moshi Training Configuration for DailyTalk Dataset
+# Based on original Moshi training with TTT integration
+# Designed for distributed training across multiple GPUs
+
+# Data configuration
+data:
+  train_data: /sise/eliyanac-group/ron_al/daily-talk-contiguous/train/dailytalk_train.jsonl
+  eval_data: /sise/eliyanac-group/ron_al/daily-talk-contiguous/eval/dailytalk_eval.jsonl
+  shuffle: true
+
+# Training run configuration
+run_dir: runs/production_ttt_moshi_dailytalk
+overwrite_run_dir: true
+
+# Model paths
+moshi_paths:
+  hf_repo_id: kyutai/moshiko-pytorch-bf16
+  moshi_path: null
+  mimi_path: null
+  tokenizer_path: null
+  config_path: null
+
+# LoRA configuration (efficient training)
+lora:
+  enable: false
+  rank: 64
+  scaling: 2.0
+  ft_embed: false
+
+# TTT (Test-Time Training) configuration
+ttt:
+  enable: true
+  layers: "middle"  # Apply TTT to middle layers for stability
+  base_lr: 1.0      # TTT learning rate
+  mini_batch_size: 16  # TTT mini batch size
+
+# Training parameters
+full_finetuning: false  # Use LoRA + TTT for efficiency
+duration_sec: 20.0      # Audio segment duration (longer for better TTT adaptation)
+batch_size: 2           # Per-GPU batch size
+num_microbatches: 4     # Gradient accumulation for effective batch size of 8
+max_steps: 1000         # Production training run
+log_freq: 10            # Log every 10 steps
+
+# Loss weighting
+first_codebook_weight_multiplier: 2.0
+text_padding_weight: 0.5
+
+# Optimizer configuration  
+optim:
+  lr: 3e-5              # Lower learning rate for stable TTT training
+  weight_decay: 0.1
+  pct_start: 0.05
+
+# Regularization
+max_norm: 1.0           # Gradient clipping for TTT stability
+
+# Checkpointing
+do_ckpt: true
+ckpt_freq: 100          # Checkpoint every 100 steps
+save_adapters: true     # Save LoRA adapters only for efficiency
+num_ckpt_keep: 5
+
+# Evaluation
+do_eval: true
+eval_freq: 100          # Evaluate every 100 steps
+
+# Paper metrics evaluation
+paper_metrics:
+  paper_metrics_eval: true
+  paper_metrics_freq: 100
+  paper_metrics_use_silence: true
+  sblimp_audio_dir: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/
+  sblimp_gold_csv: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/gold.csv
+  sblimp_max_pairs: 2000
+  sblimp_stream_config: moshi_silence
+  sstory_audio_dir: /sise/eliyanac-group/ron_al/sSC/sSC/
+  sstory_max_pairs: 1000
+  sstory_stream_config: moshi_silence
+  swuggy_audio_dir: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/
+  swuggy_gold_csv: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/gold.csv
+  swuggy_max_pairs: 2000
+  swuggy_stream_config: moshi_silence
+  tstory_audio_dir: /sise/eliyanac-group/ron_al/tSC/tSC/
+  tstory_max_pairs: 1000
+  tstory_stream_config: moshi_silence
+
+# System configuration
+seed: 42
+gradient_checkpointing: true  # Memory efficiency for large models
+param_dtype: bfloat16         # Mixed precision for efficiency
+
+# Monitoring
+wandb:
+  project: ttt-moshi-production
+  offline: false
+  run_name: production_ttt_moshi_dailytalk_middle_layers

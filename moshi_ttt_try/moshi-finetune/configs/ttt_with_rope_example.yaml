@@ -1,0 +1,81 @@
+# TTT-Moshi Training Configuration with RoPE Enabled
+# Example configuration demonstrating Rotary Position Embeddings (RoPE) integration
+# Based on production TTT config with RoPE enabled for long-context performance
+
+# Data configuration
+data:
+  train_data: /sise/eliyanac-group/ron_al/daily-talk-contiguous/train/dailytalk_train.jsonl
+  eval_data: /sise/eliyanac-group/ron_al/daily-talk-contiguous/eval/dailytalk_eval.jsonl
+  shuffle: true
+
+# Training run configuration
+run_dir: runs/ttt_moshi_with_rope
+overwrite_run_dir: true
+
+# Model paths
+moshi_paths:
+  hf_repo_id: kyutai/moshiko-pytorch-bf16
+  moshi_path: null
+  mimi_path: null
+  tokenizer_path: null
+  config_path: null
+
+# LoRA configuration
+lora:
+  enable: false
+  rank: 64
+  scaling: 2.0
+  ft_embed: false
+
+# TTT (Test-Time Training) configuration with RoPE
+ttt:
+  enable: true
+  layers: "middle"  # Apply TTT to middle layers for stability
+  base_lr: 1.0      # TTT learning rate
+  mini_batch_size: 16  # TTT mini batch size
+
+  # RoPE Configuration (NEW)
+  use_rope: true    # Enable Rotary Position Embeddings
+  rope_theta: 10000.0  # RoPE frequency base (standard value)
+
+# Training parameters
+full_finetuning: false  # Use TTT only
+duration_sec: 20.0      # Audio segment duration
+batch_size: 2           # Per-GPU batch size
+num_microbatches: 4     # Gradient accumulation
+max_steps: 1000
+log_freq: 10
+
+# Loss weighting
+first_codebook_weight_multiplier: 2.0
+text_padding_weight: 0.5
+
+# Optimizer configuration
+optim:
+  lr: 3e-5              # Learning rate
+  weight_decay: 0.1
+  pct_start: 0.05
+
+# Regularization
+max_norm: 1.0           # Gradient clipping
+
+# Checkpointing
+do_ckpt: true
+ckpt_freq: 100
+save_adapters: true
+num_ckpt_keep: 5
+
+# Evaluation
+do_eval: true
+eval_freq: 100
+
+# System configuration
+seed: 42
+gradient_checkpointing: true
+param_dtype: bfloat16
+
+# Monitoring
+wandb:
+  project: ttt-moshi-rope
+  offline: false
+  run_name: ttt_moshi_with_rope_enabled

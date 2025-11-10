@@ -1,0 +1,217 @@
+# DailyTalk Fine-tuning with Video-DiT Inspired TTT Configuration
+# Purpose: Train TTT layers on conversational audio using "local attention + global TTT" design
+# Key insight: Restrict attention context to force TTT to learn long-range dependencies
+# Based on: Video-DiT paper (ttt_dit_video_paper.txt) - 34 Elo improvement with 4.8% attention coverage
+#
+# IMPORTANT (2025-11-01): Bug fix applied - TTT layer contexts NOW actually work!
+# - Previous bug: attribute name mismatch prevented context setting (showed "0 layers")
+# - Fix: wrapped_layer → original_layer in both training and inference
+# - See: /home/alufr/ttt_tests/moshi-finetune/docs/CRITICAL_BUG_CONTEXT_SETTING.md
+#
+# Architecture:
+# - Sequence length: 160s (2048 tokens) - matches TTT paper training setup
+# - TTT layer attention: 4s (50 tokens) = 2.4% coverage - forces TTT to carry 97.6% of info
+# - Non-TTT layer attention: 8s (100 tokens) = 4.9% coverage - broader context
+# - TTT weights evolve during inference to compress long-range information
+# - 128 mini-batches per sequence (vs 15 in old config) - sufficient for TTT adaptation
+#
+# See: /home/alufr/ttt_tests/moshi-finetune/docs/VIDEO_DIT_ATTENTION_ANALYSIS.md for detailed analysis
+# See: /home/alufr/ttt_tests/moshi-finetune/docs/TTT_ATTENTION_CONTEXT_EXPLAINED.md for how TTT achieves global context
+
+run_dir: /sise/eliyanac-group/ron_al/ttt_videodit_callhome9
+# Data configuration - DailyTalk conversational audio
+data:
+  train_data: /sise/eliyanac-group/ron_al/talkbank_callhome_english/talkbank.jsonl
+  eval_data: ""
+  shuffle: false
+
+duration_sec: 300  # 160-second sequences (2048 tokens at 12.5Hz) - matches TTT paper's training context
+                   # Provides 128 mini-batches per sequence (2048 / 16 = 128) vs paper's exact setup
+                   # Previous: 80 sec = 1000 tokens = only 62 mini-batches (suboptimal)
+
+# Model paths - start from base Moshi model (checkpoint loader will override with TTT weights)
+moshi_paths:
+  hf_repo_id: kyutai/moshiko-pytorch-bf16
+  mimi_path: null
+  moshi_path: null
+  tokenizer_path: null
+  config_path: null
+
+# Training hyperparameters
+batch_size: 1
+num_microbatches: 1
+max_steps: 1000  # Initial fine-tuning run
+log_freq: 5     # Log every 5 steps
+ckpt_freq: 100   # Checkpoint every 25 steps
+num_ckpt_keep: 2  # Keep last 2 checkpoints
+do_ckpt: true
+do_eval: false
+seed: 42
+
+# Text weighting (DailyTalk has real conversations with text)
+first_codebook_weight_multiplier: 100.0  # Standard Moshi weighting for first audio codebook
+text_padding_weight: 0.5  # Standard weight for text padding
+
+# Optimizer settings - Updated to match TTT paper recommendations
+optim:
+  lr: 3e-6  # TTT paper uses 3e-4 to 6e-4 (Appendix C, Table 3) for outer-loop
+            # Previous: 5e-6 was too low, preventing optimal reconstruction task learning
+  weight_decay: 0.1
+  pct_start: 0.10  # 10% warmup as recommended by TTT paper (was 5%)
+
+# LoRA configuration (disabled - using only TTT)
+lora:
+  enable: false
+  rank: 64
+  scaling: 1.0
+  ft_embed: false
+
+full_finetuning: false
+save_adapters: true  # Save TTT parameters (and LoRA if enabled)
+
+# TTT Configuration - Video-DiT inspired approach
+ttt:
+  enable: true
+  layers: "31"  # 11 TTT layers - upper half of network (layers 12-22 out of 32)
+  base_lr: 1000000.0  # Match checkpoint
+  mini_batch_size: 64
+  persistent_states: true  # Match checkpoint
+  initial_gating_alpha: 0.1  # Match checkpoint
+  override_gating_alpha_on_resume: false # Reset gating alpha when resuming
+
+  # Selective Attention Unfreezing (NEW)
+  # Addresses magnitude imbalance: frozen attention (~1.6) vs trainable TTT (~63.5)
+  # Following Video-DiT approach: unfreeze attention layers where TTT is applied
+  # Options: "none" (default), "all", "middle", or "1,3,5" (comma-separated)
+  unfrozen_attention_layers: "31"  # Unfreeze attention in same layers as TTT
+
+  # Training Diagnostics (NEW) - Monitor TTT magnitude/gating during training
+  enable_training_diagnostics: true  # Enable diagnostic logging during training
+  training_diagnostic_frequency: 100  # Log diagnostics every N forward passes
+
+  # Attention context configuration - Following Video-DiT's "local attention + global TTT" design
+  # Video-DiT: 3s segments in 63s videos = 4.8% coverage → 34 Elo improvement
+  # Our approach: 4s window in 160s audio = 2.5% coverage (even more aggressive!)
+  #
+  # ✅ CRITICAL (2025-11-01): These values NOW actually apply to TTT layers (bug fixed!)
+  # Training logs should show: "✅ Set attention context: TTT layers=50 (N layers), Non-TTT=100 (M layers)"
+  # where N > 0. If N=0, the bug is still present!
+  ttt_layer_context: 3000        # LOCAL attention (4s at 12.5Hz) - forces TTT to carry long-range info
+  non_ttt_layer_context: 3000 # GLOBAL attention for non-TTT layers (8s context)
+
+  # Multi-Learning-Rate Configuration
+  weight_lr_multiplier: 10.0    # TTT weights LR multiplier (relative to base optim.lr)
+  alpha_lr_multiplier: 100.0    # Gating alpha LR multiplier (5e-6 × 1000 = 5e-3)
+
+  # TTT Output Normalization (to prevent overfitting/looping)
+
+  normalize_ttt_output: true
+  target_output_norm: 1.0    # Keep TTT ~same as residual
+  #norm_loss_weight: 0.0001    
+  # RoPE for TTT block
+  use_rope: true
+  rope_theta: 10000.0
+
+  # TTT-MLP Architecture (MUST MATCH checkpoint - 3 layers)
+  ttt_mlp_layers: 3  # CRITICAL: Match checkpoint architecture
+  ttt_mlp_hidden_dims: null
+  ttt_mlp_expansion_factor: 2.0
+
+  # Inner loop diagnostics (disabled for performance)
+  log_inner_loop_losses: false
+  inner_loop_log_interval: 10
+  save_inner_loop_plots: false
+  inner_loop_plot_dir: ./evaluation_plots/inner_loop
+
+  # Chunking settings
+  optimize_chunk_size: true
+  chunk_size: null
+  max_chunk_size: 50
+  prefer_efficiency: true
+
+# Efficiency settings
+gradient_checkpointing: false
+max_norm: 1.0
+
+# Paper Metrics & Evaluation Configuration
+paper_metrics:
+  paper_metrics_eval: false
+  paper_metrics_freq: 1000
+  # JSON results saving
+  save_results_json: true
+  results_dir: "./evaluation_results"
+  # OPTIMAL CONFIGURATION: Natural silence codes for +2-6% performance boost
+  paper_metrics_use_silence: true
+  # Cross-stream evaluation (experimental - for architecture research)
+  paper_metrics_use_user_stream: false
+
+  # === Figure 5: TTT Loss Trajectories ===
+  ttt_fig5_enable: true              # Enable Figure 5 plotting
+  ttt_fig5_max_T: 2048               # Maximum position to track (2048 = ~6 seconds of audio)
+  ttt_fig5_layers: [29, 30, 31]      # TTT layers to analyze
+  ttt_fig5_smooth: 10                # Smoothing window size for plots
+
+  # sBLIMP: Syntactic evaluation
+  sblimp_audio_dir: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/
+  sblimp_gold_csv: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/gold.csv
+  sblimp_max_pairs: 100
+
+  # sStory: Semantic coherence evaluation
+  sstory_audio_dir: /sise/eliyanac-group/ron_al/sSC/sSC/
+  sstory_max_pairs: 100
+
+  # sWuggy: Lexical evaluation
+  swuggy_audio_dir: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/
+  swuggy_gold_csv: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/gold.csv
+  swuggy_max_pairs: 100
+
+  # tStory: Temporal coherence evaluation
+  tstory_audio_dir: /sise/eliyanac-group/ron_al/tSC/tSC/
+  tstory_max_pairs: 100
+
+  # LibriLight Long Context Evaluation (TTT Paper methodology)
+  # NEW: Pre-concatenated 1-hour files for faster, more robust evaluation
+  librilight_evaluation_mode: pre_concatenated
+  librilight_concatenated_dir: /home/alufr/ttt_tests/librilight_1hour_sequences
+  librilight_max_files: 3  # Evaluate 3 of 8 available 1-hour files
+
+# Weights & Biases logging
+wandb:
+  project: dailytalk-ttt-finetune
+  offline: false
+  key: null
+  run_name: ttt_videodit_callhome_ctx50
+
+# CRITICAL: Resume from LibriLight pre-trained checkpoint (librilight_ttt_pretrain_fixed_weights2)
+# resume_from: /sise/eliyanac-group/ron_al/librilight_ttt_pretrain_fixed_weights/checkpoints/checkpoint_009000/consolidated/
+# reset_optimizer: false   # Start with fresh optimizer for new task
+# reset_step: true        # Start step counter from 0 for fine-tuning
+
+# Continuous RoPE (applies to all Moshi transformer layers)
+rope_continuous: true  # Enable continuous RoPE positions across chunks from same file
+rope_reset_on_new_file: true  # Reset positions when new file begins
+
+param_dtype: bfloat16
+overwrite_run_dir: true
+
+# ============================================================================
+# VERIFICATION CHECKLIST (2025-11-01 Bug Fix)
+# ============================================================================
+# After starting training/inference, verify in logs:
+#
+# 1. Training log should show:
+#    "✅ Set attention context: TTT layers=50 (11 layers), Non-TTT=100 (21 layers)"
+#    - MUST show "11 layers" (not "0 layers"!)
+#
+# 2. Inference log should show:
+#    "✅ Set context: 3000 → TTT layers: 50 (11 layers), Non-TTT: 100 (21 layers)"
+#    - MUST show "11 layers" (not "0 layers"!)
+#
+# 3. If logs show "0 layers", the bug is still present - check:
+#    - Code uses layer.original_layer (NOT layer.wrapped_layer)
+#    - Latest version from 2025-11-01 or later
+#
+# For details, see:
+# - Bug report: /home/alufr/ttt_tests/moshi-finetune/docs/CRITICAL_BUG_CONTEXT_SETTING.md
+# - Architecture: /home/alufr/ttt_tests/moshi-finetune/docs/TTT_ATTENTION_CONTEXT_EXPLAINED.md
+# ============================================================================

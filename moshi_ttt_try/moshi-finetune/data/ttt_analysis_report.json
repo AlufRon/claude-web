@@ -1,0 +1,44 @@
+{
+  "summary": {
+    "total_runs": "unknown",
+    "ttt_runs": 7,
+    "baseline_runs": 3,
+    "position_metrics_found": 3
+  },
+  "ttt_advantage": {
+    "LibriLight_8k_Loss": {
+      "ttt_loss": 3.0355144341786704,
+      "baseline_loss": 5.416033554077147,
+      "absolute_improvement": 2.380519119898477,
+      "relative_improvement_pct": 43.95318264057727
+    },
+    "LibriLight_16k_Loss": {
+      "ttt_loss": 0.8560376167297363,
+      "baseline_loss": 1.6081433296203613,
+      "absolute_improvement": 0.752105712890625,
+      "relative_improvement_pct": 46.76857460635531
+    },
+    "LibriLight_24k_Loss": {
+      "ttt_loss": 3.3221256732940674,
+      "baseline_loss": 6.026449203491211,
+      "absolute_improvement": 2.7043235301971436,
+      "relative_improvement_pct": 44.874244167369554
+    }
+  },
+  "plateau_analysis": {
+    "TTT": null,
+    "Baseline": null
+  },
+  "position_metrics": [
+    "LibriLight_8k_Loss",
+    "LibriLight_16k_Loss",
+    "LibriLight_24k_Loss"
+  ],
+  "interpretation": {
+    "average_improvement_pct": 45.19866713810071,
+    "max_improvement_pct": 46.76857460635531,
+    "positions_with_advantage": 3,
+    "total_positions": 3,
+    "ttt_shows_advantage": true
+  }
+}

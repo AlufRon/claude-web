@@ -1,0 +1,147 @@
+# DailyTalk Fine-tuning from LibriLight Pre-trained TTT
+# Purpose: Fine-tune TTT layers on conversational audio (DailyTalk)
+# Starting from: LibriLight pre-trained checkpoint (step 100)
+
+run_dir: /sise/eliyanac-group/ron_al/dailytalk_multilr_very_aggressive
+# Data configuration - DailyTalk conversational audio
+data:
+  train_data: /sise/eliyanac-group/ron_al/seamless_interaction/daily_format_output/dailytalk.jsonl
+  eval_data: ""
+  shuffle: false
+
+duration_sec: 50  # 10-second conversational segments
+
+# Model paths - start from base Moshi model (checkpoint loader will override with TTT weights)
+moshi_paths:
+  hf_repo_id: kyutai/moshiko-pytorch-bf16
+  mimi_path: null
+  moshi_path: null
+  tokenizer_path: null
+  config_path: null
+
+# Training hyperparameters
+batch_size: 1
+num_microbatches: 1
+max_steps:  10000 # Initial fine-tuning run
+log_freq: 5     # Log every 5 steps
+ckpt_freq: 1000   # Checkpoint every 25 steps
+num_ckpt_keep: 10  # Keep last 2 checkpoints
+do_ckpt: true
+do_eval: false
+seed: 42
+
+# Text weighting (DailyTalk has real conversations with text)
+first_codebook_weight_multiplier: 100.0  # Standard Moshi weighting for first audio codebook
+text_padding_weight: 0.5  # Standard weight for text padding
+
+# Optimizer settings - Match pre-training for continuity
+optim:
+  lr: 0.0000003  # Match pre-training (5e-3)
+  weight_decay: 0.1
+  pct_start: 0.05
+
+# LoRA configuration (disabled - using only TTT)
+lora:
+  enable: true
+  rank: 128
+  scaling: 2.0
+  ft_embed: false
+
+full_finetuning: false
+save_adapters: true  # Save TTT parameters
+
+# TTT Configuration (MUST MATCH checkpoint from librilight_ttt_pretrain_fixed_weights2)
+ttt:
+  enable: true
+  layers: "25,26,27,28,29,30"  # Same 3 layers as pre-training
+  base_lr: 0.01 # Match checkpoint
+  mini_batch_size: 64  # Match checkpoint (was 16 in pre-training)
+  persistent_states: true  # Match checkpoint (was false in pre-training)
+  initial_gating_alpha: 0.005  # REDUCED from checkpoint (was 0.00005) - less TTT influence
+  override_gating_alpha_on_resume: false  # 🔥 RESET gating alpha from checkpoint to initial_gating_alpha above
+
+  # Multi-Learning-Rate Configuration (VERY AGGRESSIVE - Much higher alpha LR)
+  weight_lr_multiplier: 10.0    # TTT weights: 3e-6 (10x base 3e-7)
+  alpha_lr_multiplier: 10000.0  # Gating alpha: 3e-3 (10000x base 3e-7) - VERY AGGRESSIVE
+
+  # TTT-MLP Architecture (MUST MATCH checkpoint - 3 layers)
+  ttt_mlp_layers: 10  # CRITICAL: Match checkpoint architecture
+  ttt_mlp_hidden_dims: null
+  ttt_mlp_expansion_factor: 4.0
+  
+  # TTT Output Normalization (NEW) - Scale output to match attention magnitude
+  normalize_ttt_output: true  # Set to true to enable learnable output scaling
+  target_output_norm: 25.0     # Target L2 norm (~25 matches typical attention output)
+
+  # Inner loop diagnostics (disabled for performance)
+  log_inner_loop_losses: false
+  inner_loop_log_interval: 10
+  save_inner_loop_plots: false
+  inner_loop_plot_dir: ./evaluation_plots/inner_loop
+
+  # Chunking settings
+  optimize_chunk_size: true
+  chunk_size: null
+  max_chunk_size: 50
+  prefer_efficiency: true
+
+# Efficiency settings
+gradient_checkpointing: false
+max_norm: 1.0
+
+# Paper Metrics & Evaluation Configuration
+paper_metrics:
+  paper_metrics_eval: true
+  paper_metrics_freq: 100000
+  # JSON results saving
+  save_results_json: true
+  results_dir: "./evaluation_results"
+  # OPTIMAL CONFIGURATION: Natural silence codes for +2-6% performance boost
+  paper_metrics_use_silence: true
+  # Cross-stream evaluation (experimental - for architecture research)
+  paper_metrics_use_user_stream: false
+
+  # === Figure 5: TTT Loss Trajectories ===
+  ttt_fig5_enable: false              # Enable Figure 5 plotting
+  ttt_fig5_max_T: 2048               # Maximum position to track (2048 = ~6 seconds of audio)
+  ttt_fig5_layers: [29, 30, 31]      # TTT layers to analyze
+  ttt_fig5_smooth: 10                # Smoothing window size for plots
+
+  # sBLIMP: Syntactic evaluation
+  sblimp_audio_dir: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/
+  sblimp_gold_csv: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/gold.csv
+  sblimp_max_pairs: 100
+
+  # sStory: Semantic coherence evaluation
+  sstory_audio_dir: /sise/eliyanac-group/ron_al/sSC/sSC/
+  sstory_max_pairs: 100
+
+  # sWuggy: Lexical evaluation
+  swuggy_audio_dir: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/
+  swuggy_gold_csv: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/gold.csv
+  swuggy_max_pairs: 100
+
+  # tStory: Temporal coherence evaluation
+  tstory_audio_dir: /sise/eliyanac-group/ron_al/tSC/tSC/
+  tstory_max_pairs: 100
+
+  # LibriLight Long Context Evaluation (TTT Paper methodology)
+  # NEW: Pre-concatenated 1-hour files for faster, more robust evaluation
+  librilight_evaluation_mode: pre_concatenated
+  librilight_concatenated_dir: /home/alufr/ttt_tests/librilight_1hour_sequences
+  librilight_max_files: 3  # Evaluate 3 of 8 available 1-hour files
+
+# Weights & Biases logging
+wandb:
+  project: dailytalk-ttt-finetune
+  offline: false
+  key: null
+  run_name: multilr_very_aggressive
+
+# # CRITICAL: Resume from LibriLight pre-trained checkpoint (librilight_ttt_pretrain_fixed_weights2)
+# resume_from: /sise/eliyanac-group/ron_al/librilight_ttt_pretrain_fixed_weights10/checkpoints/checkpoint_021000/consolidated
+# reset_optimizer: false   # Start with fresh optimizer for new task
+# reset_step: true        # Start step counter from 0 for fine-tuning
+
+param_dtype: bfloat16
+overwrite_run_dir: true

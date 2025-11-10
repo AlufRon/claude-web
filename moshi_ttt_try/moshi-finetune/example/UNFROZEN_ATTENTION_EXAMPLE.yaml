@@ -1,0 +1,87 @@
+# Example: Adding Selective Attention Unfreezing to Your Config
+#
+# This shows how to add the new `unfrozen_attention_layers` parameter
+# to unfreeze attention in TTT layers for better magnitude balance.
+#
+# Based on Video-DiT approach and diagnostic analysis showing:
+# - Frozen attention: ~1.6 magnitude
+# - Trainable TTT: ~63.5 magnitude (40x larger!)
+# - Result: TTT dominates with 95% contribution via gating
+#
+# Solution: Unfreeze attention layers where TTT is applied
+
+ttt:
+  enable: true
+  layers: "1"  # Which layers get TTT
+
+  # NEW PARAMETER: Unfreeze attention in specific layers
+  # Options: "none" (default), "all", "middle", or "1,3,5" (comma-separated)
+  unfrozen_attention_layers: "1"  # Unfreeze attention in same layers as TTT
+
+  base_lr: 10.0
+  mini_batch_size: 64
+  persistent_states: true
+
+  # Consider using Video-DiT's initial gating value
+  initial_gating_alpha: 0.1  # Higher than current 0.005 for better balance
+
+  override_gating_alpha_on_resume: false
+
+  # ... rest of TTT config ...
+
+
+# ============================================================================
+# RECOMMENDATIONS
+# ============================================================================
+#
+# 1. CONSERVATIVE (recommended for first experiment):
+#    unfrozen_attention_layers: "1"  # Same as TTT layers
+#    - Minimal additional parameters
+#    - Direct correspondence with TTT integration
+#
+# 2. BALANCED:
+#    unfrozen_attention_layers: "middle"  # Middle 50% of layers
+#    - Good balance between adaptation and stability
+#
+# 3. AGGRESSIVE:
+#    unfrozen_attention_layers: "all"  # All layers
+#    - Maximum adaptation capability
+#    - Consider lowering learning rate
+#
+# 4. HYBRID (advanced):
+#    layers: "5"
+#    unfrozen_attention_layers: "4,5,6"
+#    - Unfreeze neighboring layers for smoother transition
+#
+# ============================================================================
+# EXPECTED CHANGES
+# ============================================================================
+#
+# Parameter count will increase. Example for layer 1 only:
+# - Before: ~140K TTT params
+# - After:  ~75M TTT + attention params (0.95% of model)
+#
+# Training log will show:
+# 🔓 Unfreezing attention in layers: [1]
+# 🎯 Training mode: ttt
+# 📊 Trainable parameters: 75,234,816 / 7,932,438,528 (0.95%)
+#    TTT parameters: 139,296
+#    Attention parameters: 75,095,520
+#
+# ============================================================================
+# MONITORING
+# ============================================================================
+#
+# Enable TTT diagnostics to verify magnitude balance:
+# ./submit_batch_inference.sh <checkpoint> <input> <output> "" "" false true true 100
+#
+# Look for in logs:
+# 🔍 MAGNITUDE ANALYSIS:
+#    Attention:  XX.XX  (should increase from ~1.6)
+#    TTT:        XX.XX  (should decrease from ~63.5)
+#    TTT/Attn Ratio: X.XX (target: 0.5-2.0 for balance)
+#
+# 🎛️  GATING ANALYSIS:
+#    Alpha (mean): 0.XXX (target: 0.3-0.5 for balanced contribution)
+#
+# ============================================================================

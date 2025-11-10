@@ -1,0 +1,85 @@
+# TTT Memory-Optimized Configuration
+# Implements immediate solutions: disable compile + mini_batch_size=1
+# Target: Reduce memory from 47.38GB to ~40-42GB
+
+# Data configuration
+data:
+  train_data: /sise/eliyanac-group/ron_al/daily-talk-contiguous/train/dailytalk_train.jsonl
+  eval_data: /sise/eliyanac-group/ron_al/daily-talk-contiguous/eval/dailytalk_eval.jsonl
+  shuffle: true
+
+# Training run configuration
+run_dir: runs/ttt_memory_optimized
+overwrite_run_dir: true
+
+# Model paths
+moshi_paths:
+  hf_repo_id: kyutai/moshiko-pytorch-bf16
+  moshi_path: null
+  mimi_path: null
+  tokenizer_path: null
+  config_path: null
+
+# LoRA configuration (disabled for TTT-only training)
+lora:
+  enable: false
+  rank: 32
+  scaling: 2.0
+  ft_embed: false
+
+# TTT (Test-Time Training) configuration - MEMORY OPTIMIZED
+ttt:
+  enable: true
+  layers: "31"                    # Single layer only
+  base_lr: 0.1
+  mini_batch_size: 1              # REDUCED from 2 - saves ~3-5GB
+  disable_compile: true           # NEW: disable torch.compile - saves ~2-4GB
+  gradient_checkpointing: true    # NEW: TTT gradient checkpointing - saves ~4-6GB
+  sequential_processing: true     # NEW: process mini-batches sequentially
+
+# Training parameters - MAXIMUM MEMORY OPTIMIZATION
+full_finetuning: false
+duration_sec: 15.0
+batch_size: 1                     # Single sample
+num_microbatches: 1               # No gradient accumulation
+max_steps: 100                    # Quick test
+log_freq: 10
+
+# Loss weighting
+first_codebook_weight_multiplier: 2.0
+text_padding_weight: 0.5
+
+# Optimizer configuration
+optim:
+  lr: 3e-5
+  weight_decay: 0.1
+  pct_start: 0.05
+
+# Regularization
+max_norm: 1.0
+
+# Checkpointing (minimal)
+do_ckpt: false                    # Disable to save memory
+save_adapters: false
+num_ckpt_keep: 1
+
+# Evaluation (disabled to save memory)
+do_eval: false
+eval_freq: 100
+
+# Paper metrics (disabled to save memory)
+paper_metrics:
+  paper_metrics_eval: false
+
+# System configuration - MEMORY OPTIMIZED
+seed: 42
+gradient_checkpointing: true      # Essential for memory
+param_dtype: bfloat16
+cuda_memory_fraction: 0.95       # Use maximum available GPU memory
+empty_cache_frequency: 1          # Empty cache after each training step
+
+# Monitoring
+wandb:
+  project: ttt-memory-optimized
+  offline: false
+  run_name: ttt_memory_opt_test

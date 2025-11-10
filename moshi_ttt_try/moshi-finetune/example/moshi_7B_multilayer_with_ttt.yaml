@@ -1,0 +1,109 @@
+# data
+data:
+  train_data: /sise/eliyanac-group/ron_al/seamless_interaction/daily_format_output/dailytalk.jsonl
+  eval_data: /sise/eliyanac-group/ron_al/seamless_interaction/daily_format_output/dailytalk.jsonl
+  shuffle: false
+
+ttt:
+  enable: true
+  layers: "31"  # Same layers but with smaller gating
+  base_lr: 1000.0
+  mini_batch_size: 32
+  persistent_states: true
+  # NEW: Much smaller initial gating alpha to prevent forgetting
+  initial_gating_alpha: 0.5 # Start at 1% instead of 10%
+  
+  # Figure 4: Inner loop loss tracking (OPTIONAL - for analysis/debugging)
+  log_inner_loop_losses: false           # Enable reconstruction loss logging
+  inner_loop_log_interval: 1            # Log every position (1 = all, 10 = every 10th, etc.)
+  save_inner_loop_plots: false           # Auto-generate Figure 4 plots
+  inner_loop_plot_dir: "./evaluation_plots/inner_loop"  # Where to save plots
+  
+  # NEW: Multi-layer TTT-MLP Configuration
+  ttt_mlp_layers: 5                    # Use 5-layer MLP instead of default 2-layer
+  ttt_mlp_expansion_factor: 4.0         # 4x expansion per layer (head_dim * 4 = intermediate size)
+  # ttt_mlp_hidden_dims: [256, 512]    # Optional: specify exact dimensions [layer1_out, layer2_out]
+                                        # For 5 layers: input -> 256 -> 512 -> 1024 -> 512 -> output
+                                        # If not specified, uses expansion_factor: head_dim -> head_dim*4 -> head_dim*4 -> head_dim
+
+# model
+moshi_paths: 
+  hf_repo_id: "kyutai/moshiko-pytorch-bf16"
+
+full_finetuning: false
+lora:
+  enable: false
+  rank: 128
+  scaling: 2.
+  ft_embed: false
+
+paper_metrics:
+  paper_metrics_eval: true
+  paper_metrics_freq: 100
+  # JSON results saving (NEW FEATURE)
+  save_results_json: true
+  results_dir: "./evaluation_results"
+  # OPTIMAL CONFIGURATION: Natural silence codes for +2-6% performance boost
+  paper_metrics_use_silence: true
+  # Cross-stream evaluation (experimental - for architecture research)
+  paper_metrics_use_user_stream: false
+  
+  # === Figure 5: TTT Loss Trajectories (NEW) ===
+  ttt_fig5_enable: true              # Enable Figure 5 plotting
+  ttt_fig5_max_T: 2048               # Maximum position to track (2048 = ~6 seconds of audio)
+  ttt_fig5_layers: [29, 30, 31]      # TTT layers to analyze
+  ttt_fig5_smooth: 10                # Smoothing window size for plots
+  
+  sblimp_audio_dir: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/
+  sblimp_gold_csv: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/gold.csv
+  sblimp_max_pairs: 100
+  sstory_audio_dir: /sise/eliyanac-group/ron_al/sSC/sSC/
+  sstory_max_pairs: 100
+  swuggy_audio_dir: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/
+  swuggy_gold_csv: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/gold.csv
+  swuggy_max_pairs: 100  
+  tstory_audio_dir: /sise/eliyanac-group/ron_al/tSC/tSC/
+  tstory_max_pairs: 100
+  # LibriLight Long Context Evaluation (TTT Paper methodology)
+  # NEW: Pre-concatenated 1-hour files for faster, more robust evaluation
+  librilight_evaluation_mode: pre_concatenated
+  librilight_concatenated_dir: /home/alufr/ttt_tests/librilight_1hour_sequences
+  librilight_max_files: 3  # Evaluate 5 of 8 available 1-hour files
+  
+  # Legacy single_book mode (for reference)
+  # librilight_audio_dir: /sise/eliyanac-group/ron_al/librilight/extracted_medium/medium/
+  # librilight_evaluation_mode: single_book
+  # librilight_speaker_id: "100"
+  # librilight_book_name: "emerald_city_librivox_64kb_mp3"
+  # librilight_max_chapters: 3
+  # librilight_num_sequences: 1
+
+first_codebook_weight_multiplier: 100.
+text_padding_weight: .5
+
+# optim
+duration_sec: 100
+batch_size: 1
+max_steps: 100
+gradient_checkpointing: false
+optim:
+  lr: 2e-7
+  weight_decay: 0.01
+  pct_start: 0.05
+
+# other
+seed: 42
+log_freq: 1
+eval_freq: 100
+do_eval: true
+do_ckpt: true
+ckpt_freq: 1000
+
+save_adapters: true
+
+run_dir: /sise/eliyanac-group/ron_al/seamless_mosiworkinglv2005552020c
+
+wandb:
+  project: ttt-moshi-production
+  offline: false
+  run_name: ttt-moshi200s100

@@ -1,0 +1,120 @@
+# Optimized TTT Configuration Recommendations
+# Based on analysis of your successful baseline results
+
+# CURRENT SUCCESSFUL CONFIG (22.2% improvement baseline)
+current_config:
+  ttt:
+    enable: true
+    base_lr: 0.5
+    layers: '29,30,31'           # 3 layers
+    mini_batch_size: 4
+    initial_gating_alpha: 0.1
+    persistent_states: true
+
+# OPTIMIZATION 1: More Layers (Conservative)
+more_layers_conservative:
+  ttt:
+    enable: true
+    base_lr: 0.5                # Keep successful rate
+    layers: '26,27,28,29,30,31' # 6 layers (double coverage)
+    mini_batch_size: 4          # Keep working size
+    initial_gating_alpha: 0.1
+    persistent_states: true
+  expected_improvement: "5-10% additional over baseline"
+  rationale: "More layers = more adaptation capability"
+
+# OPTIMIZATION 2: Larger Mini-Batches
+larger_mini_batches:
+  ttt:
+    enable: true
+    base_lr: 0.5
+    layers: '29,30,31'
+    mini_batch_size: 16         # 4x larger (Video-DiT standard)
+    initial_gating_alpha: 0.1
+    persistent_states: true
+  expected_improvement: "3-7% additional over baseline"
+  rationale: "Better gradient estimates, more stable learning"
+
+# OPTIMIZATION 3: Higher Learning Rate
+higher_learning_rate:
+  ttt:
+    enable: true
+    base_lr: 1.0               # Double the rate
+    layers: '29,30,31'
+    mini_batch_size: 4
+    initial_gating_alpha: 0.1
+    persistent_states: true
+  expected_improvement: "2-8% additional over baseline"
+  rationale: "Faster adaptation, better long-context learning"
+
+# OPTIMIZATION 4: Combined Aggressive (High Risk, High Reward)
+aggressive_optimization:
+  ttt:
+    enable: true
+    base_lr: 1.0               # Higher learning
+    layers: 'middle'           # ~16 layers (half the model)
+    mini_batch_size: 16        # Larger batches
+    initial_gating_alpha: 0.15 # Slightly higher gating
+    persistent_states: true
+  expected_improvement: "15-30% additional over baseline"
+  rationale: "Maximum TTT capability - may need longer training"
+  caution: "Higher memory usage, longer training time"
+
+# OPTIMIZATION 5: LoRA + TTT Combination
+lora_plus_ttt:
+  ttt:
+    enable: true
+    base_lr: 0.8               # Compromise rate
+    layers: '29,30,31'         # Keep successful layers
+    mini_batch_size: 8         # Compromise size
+    initial_gating_alpha: 0.1
+    persistent_states: true
+  lora:
+    enable: true               # ENABLE BOTH!
+    rank: 64
+    scaling: 2.0
+  training_mode: "lora+ttt"    # Train both simultaneously
+  expected_improvement: "10-20% additional over baseline"
+  rationale: "Best of both worlds - LoRA + TTT complementary"
+
+# OPTIMIZATION 6: Extended Layer Range (Moderate)
+extended_layers:
+  ttt:
+    enable: true
+    base_lr: 0.7               # Slightly higher
+    layers: '24,25,26,27,28,29,30,31'  # Last 8 layers
+    mini_batch_size: 8         # Moderate increase
+    initial_gating_alpha: 0.1
+    persistent_states: true
+  expected_improvement: "8-15% additional over baseline"
+  rationale: "Good balance of coverage and stability"
+
+# RECOMMENDED PROGRESSION (Start with these in order):
+recommended_progression:
+  step_1: "more_layers_conservative"    # Safest improvement
+  step_2: "larger_mini_batches"         # Stability improvement  
+  step_3: "lora_plus_ttt"              # Maximum complementary benefit
+  step_4: "extended_layers"            # If you want even more
+  step_5: "aggressive_optimization"    # Final push for maximum performance
+
+# TRAINING CONSIDERATIONS:
+training_tips:
+  longer_training: "TTT benefits scale with training time - try 2-3x current duration"
+  evaluation_frequency: "More TTT layers = slower training, evaluate less frequently"
+  memory_scaling: "Each TTT layer adds ~4.4M parameters - monitor GPU memory"
+  convergence: "TTT may need 50-100% more steps to fully converge than LoRA"
+  
+# MONITORING METRICS:
+key_metrics_to_watch:
+  - "TTT gating alpha values (should be 0.05-0.3 range)"
+  - "TTT parameter weight changes (should be active)"
+  - "LibriLight slope (more negative = better learning)"
+  - "Consistency across context lengths"
+  - "Memory usage scaling"
+
+# EXPECTED RESULTS:
+performance_targets:
+  conservative_improvement: "30-35% total over vanilla"  # vs your 22.2% baseline
+  moderate_improvement: "35-45% total over vanilla"
+  aggressive_improvement: "45-60% total over vanilla"
+  note: "These are cumulative improvements over the vanilla LoRA baseline"

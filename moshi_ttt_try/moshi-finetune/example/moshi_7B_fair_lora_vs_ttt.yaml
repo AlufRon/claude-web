@@ -1,0 +1,93 @@
+# Fair LoRA vs TTT Comparison Configuration
+# Parameter Budget: ~4.3M parameters each
+# TTT: 1 layer (4,354,080 params) vs LoRA: rank 11 (4,325,376 params)
+
+# data
+data:
+  train_data: /sise/eliyanac-group/ron_al/seamless_interaction/daily_format_output/dailytalk.jsonl
+  eval_data: /sise/eliyanac-group/ron_al/seamless_interaction/daily_format_output/dailytalk.jsonl
+  shuffle: false
+
+ttt:
+  enable: false  # Set to true for TTT run
+  layers: "31"  # Single layer for fair comparison
+  base_lr: 0.5
+  mini_batch_size: 4
+  persistent_states: true
+  initial_gating_alpha: 0.008  # Conservative gating
+
+# model
+moshi_paths: 
+  hf_repo_id: "kyutai/moshiko-pytorch-bf16"
+
+full_finetuning: false
+lora:
+  enable: true  # Set to false for TTT run
+  rank: 11      # 4,325,376 params (matches TTT budget)
+  scaling: 2.0  # Standard LoRA scaling
+  ft_embed: false
+
+paper_metrics:
+  paper_metrics_eval: true
+  paper_metrics_freq: 50
+  paper_metrics_use_silence: true
+  paper_metrics_use_user_stream: false
+  sblimp_audio_dir: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/
+  sblimp_gold_csv: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/gold.csv
+  sblimp_max_pairs: 4
+  sstory_audio_dir: /sise/eliyanac-group/ron_al/sSC/sSC/
+  sstory_max_pairs: 4
+  swuggy_audio_dir: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/
+  swuggy_gold_csv: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/gold.csv
+  swuggy_max_pairs: 4
+  tstory_audio_dir: /sise/eliyanac-group/ron_al/tSC/tSC/
+  tstory_max_pairs: 4
+  # LibriLight Long Context Evaluation (TTT Paper methodology)
+  librilight_audio_dir: /sise/eliyanac-group/ron_al/librilight/extracted_medium/medium/
+  librilight_evaluation_mode: single_book
+  librilight_speaker_id: "100"
+  librilight_book_name: "emerald_city_librivox_64kb_mp3"
+  librilight_max_chapters: 3
+  librilight_num_sequences: 1
+
+first_codebook_weight_multiplier: 100.
+text_padding_weight: .5
+
+# optim
+duration_sec: 30
+batch_size: 1
+max_steps: 1000
+gradient_checkpointing: true
+optim:
+  lr: 8e-3
+  weight_decay: 0.01
+  pct_start: 0.05
+
+# other
+seed: 42
+log_freq: 10
+eval_freq: 50
+do_eval: true
+do_ckpt: false
+ckpt_freq: 200
+
+save_adapters: true
+
+run_dir: /sise/eliyanac-group/ron_al/seamless_moshi511s12122
+ 
+wandb:
+  project: ttt-moshi-production
+  offline: false
+  run_name: fair-lora-vs-ttt
+
+# USAGE INSTRUCTIONS:
+# 
+# For LoRA run (current config):
+#   lora.enable: true
+#   ttt.enable: false
+#   
+# For TTT run:
+#   lora.enable: false  
+#   ttt.enable: true
+#
+# Both configs have ~4.3M trainable parameters for fair comparison

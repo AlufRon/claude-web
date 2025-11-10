@@ -1,0 +1,96 @@
+# Test Configuration for Modified train.py
+# Minimal config to test TTT and paper metrics integration
+
+# Data configuration (minimal for testing)
+data:
+  train_data: /sise/eliyanac-group/ron_al/daily-talk-contiguous/train/dailytalk_train.jsonl
+  eval_data: /sise/eliyanac-group/ron_al/daily-talk-contiguous/eval/dailytalk_eval.jsonl
+  shuffle: true
+
+# Training run configuration
+run_dir: runs/test_train_py_integration
+overwrite_run_dir: true
+
+# Model paths
+moshi_paths:
+  hf_repo_id: kyutai/moshiko-pytorch-bf16
+  moshi_path: null
+  mimi_path: null
+  tokenizer_path: null
+  config_path: null
+
+# LoRA configuration (disabled for TTT-only test)
+lora:
+  enable: false
+  rank: 32
+  scaling: 2.0
+  ft_embed: false
+
+# TTT (Test-Time Training) configuration - ENABLED
+ttt:
+  enable: true
+  layers: "middle"
+  base_lr: 0.1  # Video-DiT exact value
+  mini_batch_size: 8
+
+# Training parameters
+full_finetuning: false
+duration_sec: 10.0
+batch_size: 1
+num_microbatches: 2
+max_steps: 5  # Very short test run
+log_freq: 1
+
+# Loss weighting
+first_codebook_weight_multiplier: 2.0
+text_padding_weight: 0.5
+
+# Optimizer configuration
+optim:
+  lr: 3e-5
+  weight_decay: 0.1
+  pct_start: 0.05
+
+# Regularization
+max_norm: 1.0
+
+# Checkpointing (disabled for test)
+do_ckpt: false
+ckpt_freq: 100
+save_adapters: true
+num_ckpt_keep: 3
+
+# Evaluation
+do_eval: true
+eval_freq: 5  # Test evaluation at step 5
+
+# Paper metrics evaluation (minimal test)
+paper_metrics:
+  paper_metrics_eval: true
+  paper_metrics_freq: 5  # Test at step 5
+  paper_metrics_use_silence: true
+  sblimp_audio_dir: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/
+  sblimp_gold_csv: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/gold.csv
+  sblimp_max_pairs: 10  # Very small for testing
+  sblimp_stream_config: moshi_silence
+  sstory_audio_dir: /sise/eliyanac-group/ron_al/sSC/sSC/
+  sstory_max_pairs: 10
+  sstory_stream_config: moshi_silence
+  swuggy_audio_dir: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/
+  swuggy_gold_csv: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/gold.csv
+  swuggy_max_pairs: 10
+  swuggy_stream_config: moshi_silence
+  tstory_audio_dir: /sise/eliyanac-group/ron_al/tSC/tSC/
+  tstory_max_pairs: 10
+  tstory_stream_config: moshi_silence
+
+# System configuration
+seed: 42
+gradient_checkpointing: true
+param_dtype: bfloat16
+
+# Monitoring (disabled for test)
+wandb:
+  project: null
+  offline: true
+  run_name: test_train_py_integration
