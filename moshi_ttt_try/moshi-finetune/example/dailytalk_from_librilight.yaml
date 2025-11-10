@@ -1,0 +1,121 @@
+# DailyTalk Fine-tuning from LibriLight Configuration
+# Purpose: Fine-tune on DailyTalk (conversation data) after LibriLight pre-training
+# Transfer Learning: Load LibriLight checkpoint, reset optimizer, train on DailyTalk
+# Key Change: text_padding_weight changes from 0.0 (audio-only) to 0.5 (conversation)
+
+run_dir: /sise/eliyanac-group/ron_al/dailytalk_ttt_finetuned22
+
+# Data configuration - CHANGED to DailyTalk conversation format
+data:
+  train_data: /sise/eliyanac-group/ron_al/daily-talk-contiguous/daily_train.jsonl
+  eval_data: ""
+  shuffle: false
+
+duration_sec: 30  # Shorter sequences for conversation format
+
+# Model paths - will be loaded from LibriLight checkpoint
+moshi_paths:
+  hf_repo_id: kyutai/moshiko-pytorch-bf16
+  mimi_path: null
+  moshi_path: null
+  tokenizer_path: null
+  config_path: null
+
+# Training hyperparameters - adjusted for fine-tuning
+batch_size: 4
+num_microbatches: 1
+max_steps: 2000  # Fewer steps for fine-tuning (was 10000 for pre-training)
+log_freq: 10
+ckpt_freq: 500
+num_ckpt_keep: 3
+do_ckpt: true
+do_eval: false
+seed: 42
+
+# Text weighting - CRITICAL CHANGE for conversation format
+first_codebook_weight_multiplier: 100.0
+text_padding_weight: 0.5  # CHANGED from 0.0 - now training on text too!
+
+# Optimizer settings - potentially use higher LR for fine-tuning
+optim:
+  lr: 5e-5  # Lower LR for fine-tuning (was 1e-4 for pre-training)
+  weight_decay: 0.1
+  pct_start: 0.05
+
+# LoRA configuration (same as pre-training)
+lora:
+  enable: true
+  rank: 64
+  scaling: 2.0
+  ft_embed: false
+
+full_finetuning: false
+save_adapters: true
+
+# TTT Configuration (can be same or adjusted)
+ttt:
+  enable: true
+  layers: middle
+  base_lr: 1.0  # Could adjust this for fine-tuning
+  mini_batch_size: 16
+  persistent_states: true
+  initial_gating_alpha: 0.1  # TTT gating already trained, will adapt
+
+  # TTT-MLP Architecture (must match pre-training checkpoint)
+  ttt_mlp_layers: 5
+  ttt_mlp_hidden_dims: null
+  ttt_mlp_expansion_factor: 4.0
+
+  # Inner loop diagnostics (optional for fine-tuning)
+  log_inner_loop_losses: false
+  inner_loop_log_interval: 10
+  save_inner_loop_plots: false
+  inner_loop_plot_dir: ./evaluation_plots/inner_loop
+
+  # DailyTalk evaluation settings (different from LibriLight)
+  optimize_chunk_size: true
+  chunk_size: null
+  max_chunk_size: 50
+  prefer_efficiency: true
+
+# Efficiency settings
+gradient_checkpointing: true
+max_norm: 1.0
+
+# Weights & Biases logging
+wandb:
+  project: moshi-ttt-dailytalk
+  offline: false
+  key: null
+  run_name: dailytalk_finetuned_from_librilight
+
+# ============================================================
+# CHECKPOINT LOADING FOR TRANSFER LEARNING (CRITICAL)
+# ============================================================
+# CHANGE THIS PATH to your LibriLight checkpoint!
+# Example: Use the final LibriLight checkpoint at step 10000
+resume_from: /sise/eliyanac-group/ron_al/librilight_ttt_pretrain_fixed_weights2/checkpoints/checkpoint_003000/consolidated/
+
+# Transfer learning settings
+reset_optimizer: true   # Fresh optimizer for new dataset distribution
+reset_step: true        # Start step counter from 0 for fine-tuning
+
+param_dtype: bfloat16
+overwrite_run_dir: false
+
+# ============================================================
+# NOTES ON TRANSFER LEARNING:
+# ============================================================
+# 1. Weights: Loaded from LibriLight checkpoint (LoRA + TTT)
+# 2. Optimizer: Reset (fresh momentum for DailyTalk distribution)
+# 3. Step counter: Reset to 0 (fine-tuning is separate phase)
+# 4. Dataset: Switched from LibriLight (audio-only) to DailyTalk (conversation)
+# 5. Text weighting: Changed from 0.0 to 0.5 (now training on text)
+# 6. Learning rate: Lower (5e-5 vs 1e-4) for fine-tuning
+# 7. Max steps: Fewer (2000 vs 10000) - fine-tuning converges faster
+#
+# Expected behavior:
+# - TTT weights start from LibriLight-trained values
+# - Model adapts to conversation format (text + audio)
+# - Training should converge faster than training from scratch
+# - Better speech quality due to large audio pre-training

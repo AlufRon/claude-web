@@ -1,0 +1,88 @@
+# LibriLight TTT Pre-training - MEDIUM TRAINING (10K steps)
+# Purpose: Medium-length pre-training for TTT layers on LibriLight
+# Saves checkpoints every 3000 steps
+# Estimated time: ~4.5 hours
+
+run_dir: /sise/eliyanac-group/ron_al/librilight_ttt_medium_10k
+
+# Data configuration
+data:
+  train_data: /sise/eliyanac-group/ron_al/librilight/extracted_medium/medium/librilight.jsonl
+  eval_data: ""
+  shuffle: true
+
+duration_sec: 10
+
+# Model paths
+moshi_paths:
+  hf_repo_id: kyutai/moshiko-pytorch-bf16
+  mimi_path: null
+  moshi_path: null
+  tokenizer_path: null
+  config_path: null
+
+# Training hyperparameters - MEDIUM TRAINING
+batch_size: 1
+num_microbatches: 1
+max_steps: 10000  # 10K steps
+log_freq: 50      # Log every 50 steps
+ckpt_freq: 3000   # Checkpoint every 3000 steps
+num_ckpt_keep: 2  # Keep last 2 checkpoints
+do_ckpt: true
+do_eval: false
+seed: 42
+
+# Text weighting
+first_codebook_weight_multiplier: 1.0
+text_padding_weight: 0.00001
+
+# Optimizer settings
+optim:
+  lr: 1e-5
+  weight_decay: 0.1
+  pct_start: 0.05  # 500 step warmup
+
+# LoRA (disabled)
+lora:
+  enable: false
+  rank: 64
+  scaling: 2.0
+  ft_embed: false
+
+full_finetuning: false
+save_adapters: true
+
+# TTT Configuration
+ttt:
+  enable: true
+  layers: "29,30,31"
+  base_lr: 1.0
+  mini_batch_size: 16
+  persistent_states: true
+  initial_gating_alpha: 0.1
+  ttt_mlp_layers: 5
+  ttt_mlp_hidden_dims: null
+  ttt_mlp_expansion_factor: 4.0
+  log_inner_loop_losses: false
+  inner_loop_log_interval: 50
+  save_inner_loop_plots: false
+  inner_loop_plot_dir: ./evaluation_plots/inner_loop
+  optimize_chunk_size: true
+  chunk_size: null
+  max_chunk_size: 50
+  prefer_efficiency: true
+
+gradient_checkpointing: false
+max_norm: 1.0
+
+wandb:
+  project: librilight-ttt-pretrain
+  offline: false
+  key: null
+  run_name: librilight_ttt_medium_10k
+
+resume_from: null
+reset_optimizer: false
+reset_step: false
+param_dtype: bfloat16
+overwrite_run_dir: true

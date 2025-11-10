@@ -1,0 +1,97 @@
+# LibriLight TTT Pre-training - LONG TRAINING
+# Purpose: Extended pre-train TTT layers on audio-only data (LibriLight)
+# Saves checkpoints every 3000 steps for efficient disk usage
+
+run_dir: /sise/eliyanac-group/ron_al/librilight_ttt_high_lr_shuffle
+
+# Data configuration
+data:
+  train_data: /sise/eliyanac-group/ron_al/librilight/extracted_medium/medium/librilight.jsonl
+  eval_data: ""
+  shuffle: true  # FIXED: Shuffle for better generalization
+
+duration_sec: 60  # FIXED: Back to stable 60s duration
+
+# Model paths - start from base Moshi model
+moshi_paths:
+  hf_repo_id: kyutai/moshiko-pytorch-bf16
+  mimi_path: null
+  moshi_path: null
+  tokenizer_path: null
+  config_path: null
+
+# Training hyperparameters - LONG TRAINING
+batch_size: 1
+num_microbatches: 1
+max_steps: 50000  # 50K steps for thorough pre-training (~17 hours at 1.6s/step)
+log_freq: 10     # Log every 100 steps (less verbose)
+ckpt_freq: 3000   # Checkpoint every 3000 steps (~80 min intervals)
+num_ckpt_keep: 3  # Keep last 3 checkpoints (9K steps coverage)
+do_ckpt: true
+do_eval: false
+seed: 42
+
+# Text weighting (CRITICAL for LibriLight audio-only training)
+first_codebook_weight_multiplier: 1.0
+text_padding_weight: 0.00001  # Very small weight for text padding (audio-only focus)
+
+# Optimizer settings
+optim:
+  lr: 0.005  # FIXED: 5e-3 moderate-high LR (between 1e-5 and 8e-3)
+  weight_decay: 0.1
+  pct_start: 0.05   # 5% warmup (2500 steps)
+
+# LoRA configuration (disabled - using only TTT)
+lora:
+  enable: false
+  rank: 64
+  scaling: 2.0
+  ft_embed: false
+
+full_finetuning: false
+save_adapters: true  # Save TTT parameters
+
+# TTT Configuration (ENABLED - 3 layers for audio adaptation)
+ttt:
+  enable: true
+  layers: "29,30,31"  # Top 3 layers for TTT adaptation
+  base_lr: 1.0  # FIXED: Back to working value
+  mini_batch_size: 16  # FIXED: Back to working value
+  persistent_states: true
+  initial_gating_alpha: 0.1  # FIXED: Back to working value
+
+  # TTT-MLP Architecture
+  ttt_mlp_layers: 5  # FIXED: Back to working 5-layer architecture
+  ttt_mlp_hidden_dims: null  # Auto-calculate from expansion_factor
+  ttt_mlp_expansion_factor: 4.0
+
+  # Inner loop diagnostics (disabled for performance)
+  log_inner_loop_losses: false
+  inner_loop_log_interval: 100
+  save_inner_loop_plots: false
+  inner_loop_plot_dir: ./evaluation_plots/inner_loop
+
+  # Chunking settings for LibriLight
+  optimize_chunk_size: true
+  chunk_size: null  # Auto-calculate from mini_batch_size
+  max_chunk_size: 50
+  prefer_efficiency: true
+
+# Efficiency settings
+gradient_checkpointing: false  # Disabled to avoid tensor mismatch issues
+max_norm: 1.0
+
+# Weights & Biases logging
+wandb:
+  project: librilight-ttt-pretrain
+  offline: false
+  key: null
+  run_name: librilight_ttt_50k_lr5e3_shuffle
+
+# Checkpoint resuming (can resume if interrupted)
+resume_from: null
+reset_optimizer: false
+reset_step: false
+
+param_dtype: bfloat16
+overwrite_run_dir: true

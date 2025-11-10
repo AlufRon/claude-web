@@ -1,0 +1,78 @@
+# TTT OPTIMAL - Ultra-Frequent Updates + Long Context
+# Based on analysis: Aggressive LR (0.01) + Mini-batch 4 + More layers + Longer sequences
+# data
+data:
+  train_data: /sise/eliyanac-group/ron_al/seamless_interaction/daily_format_output/dailytalk.jsonl
+  eval_data: /sise/eliyanac-group/ron_al/seamless_interaction/daily_format_output/dailytalk.jsonl
+  shuffle: false
+
+ttt:
+  enable: true  # TTT ENABLED with optimal parameters
+  layers: "27,28,29,30,31"  # 5 layers for more expressiveness (was 3)
+  base_lr: 0.01   # Aggressive learning rate (proven best)
+  mini_batch_size: 4  # Ultra-frequent updates (4x per sequence vs 16)
+  persistent_states: true  # Enable TTT state persistence
+
+# model
+moshi_paths: 
+  hf_repo_id: "kyutai/moshiko-pytorch-bf16"
+
+full_finetuning: false 
+lora:
+  enable: true 
+  rank: 64
+  scaling: 2.
+  ft_embed: false 
+
+paper_metrics:
+  paper_metrics_eval: true
+  paper_metrics_freq: 10  # Evaluate every 10 steps
+  paper_metrics_use_silence: true
+  paper_metrics_use_user_stream: false
+  sblimp_audio_dir: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/
+  sblimp_gold_csv: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/gold.csv
+  sblimp_max_pairs: 10
+  sstory_audio_dir: /sise/eliyanac-group/ron_al/sSC/sSC/
+  sstory_max_pairs: 10
+  swuggy_audio_dir: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/
+  swuggy_gold_csv: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/gold.csv
+  swuggy_max_pairs: 10
+  tstory_audio_dir: /sise/eliyanac-group/ron_al/tSC/tSC/
+  tstory_max_pairs: 10
+  # LibriLight Long Context Evaluation (TTT Paper methodology)
+  librilight_audio_dir: /sise/eliyanac-group/ron_al/librilight/extracted_medium/medium/
+  librilight_evaluation_mode: single_book
+  librilight_speaker_id: "100"
+  librilight_book_name: "emerald_city_librivox_64kb_mp3"
+  librilight_max_chapters: 3
+  librilight_num_sequences: 1
+
+first_codebook_weight_multiplier: 100.
+text_padding_weight: .5
+
+# optim - longer sequences for real long-context test
+duration_sec: 600  # 10 minutes - test real TTT long-context advantage
+batch_size: 1      # Keep batch size 1 for longer sequences
+max_steps: 2000    # Same number of steps for fair comparison
+gradient_checkpointing: true
+optim:
+  lr: 1e-6         # Same main learning rate
+  weight_decay: 0.1
+  pct_start: 0.05
+
+# other
+seed: 42  # Different seed for independent comparison
+log_freq: 10
+eval_freq: 50  # Same eval frequency
+do_eval: true
+do_ckpt: true
+ckpt_freq: 50
+
+save_adapters: true
+
+run_dir: /sise/eliyanac-group/ron_al/ttt_optimal
+
+wandb:
+  project: ttt-moshi-long-conversations
+  offline: false
+  run_name: ttt_optimal_ultra_frequent_updates

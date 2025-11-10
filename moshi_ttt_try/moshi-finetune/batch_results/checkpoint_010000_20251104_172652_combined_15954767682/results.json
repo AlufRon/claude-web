@@ -1,0 +1,24 @@
+{
+  "checkpoint": "/sise/eliyanac-group/ron_al/ttt6callhome122/checkpoints/checkpoint_010000/consolidated/",
+  "hf_repo": "kyutai/moshiko-pytorch-bf16",
+  "input_files": [
+    "/sise/eliyanac-group/ron_al/examples/combined_1595476768245534437_24000hz.wav"
+  ],
+  "num_sequences": 1,
+  "sequence_length": 22756,
+  "audio_codebooks": 8,
+  "metrics": {
+    "generated_files": [
+      "combined_1595476768245534437_24000hz_moshi_response.wav"
+    ],
+    "text_files": [
+      "combined_1595476768245534437_24000hz_moshi_text.txt"
+    ],
+    "generation_method": "batch_conversation_inference",
+    "response_tokens": 22755,
+    "input_tokens": 22756,
+    "valid_text_tokens": 16687,
+    "temperature": 0.8,
+    "note": "Moshi conversation response - same length as user input"
+  }
+}

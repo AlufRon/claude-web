@@ -1,0 +1,98 @@
+# LibriLight Pre-training Configuration (Fixed Weights)
+# Purpose: TTT pre-training with CORRECTED first_codebook_weight_multiplier (100.0)
+# Dataset: LibriLight (mono audio, no text transcripts)
+# Key Change: first_codebook_weight_multiplier: 1.0 → 100.0
+
+run_dir: /sise/eliyanac-group/ron_al/librilight_ttt_pretrain_fixed_weights10
+
+# Data configuration
+data:
+  train_data: /sise/eliyanac-group/ron_al/librilight/extracted_medium/medium/librilight.jsonl
+  eval_data: ""
+  shuffle: false  # Sequential processing for TTT context continuity
+
+duration_sec: 100  # Long sequences for TTT advantage
+
+# Model paths - start from base Moshi model
+moshi_paths:
+  hf_repo_id: kyutai/moshiko-pytorch-bf16
+  mimi_path: null
+  moshi_path: null
+  tokenizer_path: null
+  config_path: null
+
+# Training hyperparameters (matching successful high_lr_shuffle run)
+batch_size: 1
+num_microbatches: 1
+max_steps: 50000
+log_freq: 10
+ckpt_freq: 3000
+num_ckpt_keep: 3
+do_ckpt: true
+do_eval: false
+seed: 42
+
+# Text weighting (FIXED: Now using correct Moshi weights)
+first_codebook_weight_multiplier: 100.0  # Standard Moshi weighting for first audio codebook
+text_padding_weight: 0.5  # Standard weight for text padding
+
+# Optimizer settings (using proven high LR)
+optim:
+  lr: 0.00005  # High LR that worked well in librilight_ttt_high_lr_shuffle
+  weight_decay: 0.1
+  pct_start: 0.05
+
+# LoRA configuration (disabled - train only TTT)
+lora:
+  enable: false
+  rank: 64
+  scaling: 2.0
+  ft_embed: false
+
+full_finetuning: false
+save_adapters: true  # Save TTT weights
+
+# TTT Configuration (proven settings from successful run)
+ttt:
+  enable: true
+  layers: "29,30,31"  # Last 3 layers (same as librilight_ttt_high_lr_shuffle)
+  base_lr: 0.0001
+  mini_batch_size: 64
+  persistent_states: true
+  initial_gating_alpha: 0.0001
+
+  # TTT-MLP Architecture
+  ttt_mlp_layers: 3
+  ttt_mlp_hidden_dims: null
+  ttt_mlp_expansion_factor: 4.0
+
+  # Inner loop diagnostics
+  log_inner_loop_losses: false
+  inner_loop_log_interval: 100
+  save_inner_loop_plots: false
+  inner_loop_plot_dir: ./evaluation_plots/inner_loop
+
+  # Chunking settings
+  optimize_chunk_size: true
+  chunk_size: null
+  max_chunk_size: 50
+  prefer_efficiency: true
+
+# Efficiency settings
+gradient_checkpointing: false
+max_norm: 1.0
+
+# Weights & Biases logging
+wandb:
+  project: librilight-ttt-pretrain
+  offline: false
+  key: null
+  run_name: librilight_ttt_fixed_weights_50k_lr5e3_no_shuffle5
+
+# Checkpoint resuming (not used for initial training)
+resume_from: null
+reset_optimizer: false
+reset_step: false
+
+param_dtype: bfloat16
+overwrite_run_dir: true

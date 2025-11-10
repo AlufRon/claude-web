@@ -1,0 +1,173 @@
+# TTT-Optimized LibriLight Evaluation Configuration Examples
+#
+# This file demonstrates different TTT optimization strategies for LibriLight evaluation.
+# Choose the configuration that best matches your use case:
+# - Efficiency-focused: Maximum TTT processing efficiency  
+# - Granularity-focused: Maximum adaptation per token
+# - Balanced: Good compromise between efficiency and adaptation
+
+# ===========================================
+# Example 1: Maximum Efficiency Configuration
+# ===========================================
+# Use case: Production environments, faster evaluation
+# Benefits: 100% TTT efficiency, no padding waste
+# Trade-off: Larger chunks mean less frequent TTT updates
+
+ttt_max_efficiency:
+  enable: true
+  layers: "middle"
+  base_lr: 0.1
+  mini_batch_size: 50              # Large mini-batches for efficiency
+  persistent_states: true
+  
+  # TTT-Optimized chunking settings
+  optimize_chunk_size: true        # Enable optimization
+  chunk_size: null                 # Auto-calculate (will be 50)
+  max_chunk_size: 50              # Standard LibriLight chunk size
+  prefer_efficiency: true          # Prioritize 100% efficiency
+  
+  # Expected result: chunk_size=50, mini_batch_size=50, efficiency=100%
+
+# ===========================================  
+# Example 2: Balanced Efficiency Configuration
+# ===========================================
+# Use case: Research environments, good balance
+# Benefits: High efficiency with more frequent TTT adaptation
+# Trade-off: Balanced approach
+
+ttt_balanced:
+  enable: true
+  layers: "middle"  
+  base_lr: 0.1
+  mini_batch_size: 25              # Medium mini-batches
+  persistent_states: true
+  
+  # TTT-Optimized chunking settings
+  optimize_chunk_size: true        
+  chunk_size: null                 # Auto-calculate (will be 25)
+  max_chunk_size: 50
+  prefer_efficiency: true          # Find divisors for good efficiency
+  
+  # Expected result: chunk_size=25, efficiency=100%, 2 chunks per 50 tokens
+
+# ===========================================
+# Example 3: Granular Adaptation Configuration  
+# ===========================================
+# Use case: Research on TTT adaptation patterns
+# Benefits: Maximum TTT updates, finest adaptation granularity
+# Trade-off: Lower efficiency due to smaller chunks
+
+ttt_granular:
+  enable: true
+  layers: "middle"
+  base_lr: 0.1
+  mini_batch_size: 10              # Small mini-batches for granularity
+  persistent_states: true
+  
+  # TTT-Optimized chunking settings
+  optimize_chunk_size: true
+  chunk_size: null                 # Auto-calculate (will be 10)
+  max_chunk_size: 50
+  prefer_efficiency: false         # Prioritize granularity over efficiency
+  
+  # Expected result: chunk_size=10, efficiency=100%, 5 chunks per 50 tokens
+
+# ===========================================
+# Example 4: Custom Override Configuration
+# ===========================================
+# Use case: Specific experimental requirements
+# Benefits: Full control over chunk size
+# Trade-off: Manual optimization required
+
+ttt_custom:
+  enable: true
+  layers: "middle"
+  base_lr: 0.1
+  mini_batch_size: 16              # Standard mini-batch size
+  persistent_states: true
+  
+  # TTT-Optimized chunking settings  
+  optimize_chunk_size: true
+  chunk_size: 20                   # Force specific chunk size
+  max_chunk_size: 50
+  prefer_efficiency: true
+  
+  # Expected result: chunk_size=20, efficiency varies based on alignment
+
+# ===========================================
+# Example 5: Legacy Compatibility Mode
+# ===========================================
+# Use case: Reproducing existing results exactly
+# Benefits: Identical behavior to current implementation
+# Trade-off: No optimization benefits
+
+ttt_legacy:
+  enable: true
+  layers: "middle"
+  base_lr: 0.1
+  mini_batch_size: 4               # Current default
+  persistent_states: true
+  
+  # TTT-Optimized chunking settings (disabled)
+  optimize_chunk_size: false       # Disable optimization
+  chunk_size: null                 # Ignored when optimization disabled
+  max_chunk_size: 50              # Falls back to this value
+  prefer_efficiency: true
+  
+  # Expected result: chunk_size=50 (legacy), efficiency=96% (48/50 tokens)
+
+# ===========================================
+# Configuration Guidelines
+# ===========================================
+#
+# Chunk Size Selection Strategy:
+# 1. For maximum speed: Use mini_batch_size >= 25
+# 2. For maximum adaptation: Use mini_batch_size <= 10  
+# 3. For balanced performance: Use mini_batch_size = 16-25
+#
+# Efficiency Calculation:
+# - Perfect efficiency (100%): chunk_size % mini_batch_size == 0
+# - Good efficiency (>90%): chunk_size - (chunk_size % mini_batch_size) >= 0.9 * chunk_size
+# - Poor efficiency (<90%): Consider adjusting mini_batch_size or chunk_size
+#
+# Learning Rate Considerations:
+# - Effective LR = base_lr / mini_batch_size
+# - Larger mini_batch_size → Lower effective LR per mini-batch
+# - More mini-batches per chunk → More adaptation opportunities
+#
+# Memory Considerations:
+# - Larger mini_batch_size → Higher peak memory during TTT processing
+# - Larger chunk_size → Higher memory for intermediate activations
+# - For memory-constrained environments: Use mini_batch_size <= 16
+
+# ===========================================
+# Advanced: Research Configurations
+# ===========================================
+
+# Ultra-efficient (for speed benchmarking)
+ttt_ultra_efficient:
+  enable: true
+  mini_batch_size: 50
+  chunk_size: 50                   # Perfect 1:1 alignment
+  optimize_chunk_size: true
+  prefer_efficiency: true
+  # Result: 1 mini-batch per chunk, 100% efficiency
+
+# Ultra-granular (for adaptation analysis)  
+ttt_ultra_granular:
+  enable: true
+  mini_batch_size: 5
+  chunk_size: 5                    # Tiny chunks for maximum updates
+  optimize_chunk_size: true
+  prefer_efficiency: false
+  # Result: 10 chunks per 50 tokens, maximum adaptation frequency
+
+# Token-by-token preparation (for Moshi-native compatibility)
+ttt_token_by_token_prep:
+  enable: true
+  mini_batch_size: 1               # Single token per mini-batch
+  chunk_size: 1                    # Single token per chunk
+  base_lr: 0.025                   # Compensate for higher effective LR
+  optimize_chunk_size: true
+  prefer_efficiency: false
+  # Result: Maximum granularity, preparation for native streaming

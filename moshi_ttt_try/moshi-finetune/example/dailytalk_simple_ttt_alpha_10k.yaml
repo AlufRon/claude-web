@@ -1,0 +1,50 @@
+# DailyTalk Fine-tuning with a SIMPLE, 2-layer TTT
+run_dir: /sise/eliyanac-group/ron_al/dailytalk_simple_ttt
+
+data:
+  train_data: /sise/eliyanac-group/ron_al/talkbank_callhome_english/talkbank.jsonl
+  shuffle: true
+
+duration_sec: 20
+batch_size: 1
+max_steps: 10000
+log_freq: 100
+ckpt_freq: 1000
+num_ckpt_keep: 5
+do_ckpt: true
+
+optim:
+  lr: 0.000003
+  weight_decay: 0.1
+  pct_start: 0.05
+
+lora:
+  enable: true
+  rank: 64
+  scaling: 2.0
+
+ttt:
+  enable: true
+  layers: "30"
+  base_lr: 0.1
+  mini_batch_size: 64
+  persistent_states: true
+  initial_gating_alpha: 0.01
+  
+  # Use a 2-layer TTT MLP, matching the Video-DiT paper
+  ttt_mlp_layers: 2
+
+  # Multi-LR settings will be added in the next step
+  weight_lr_multiplier: 10.0
+  alpha_lr_multiplier: 10000.0 # We will experiment with this value
+
+  use_rope: true
+  rope_theta: 10000.0
+
+moshi_paths:
+  hf_repo_id: kyutai/moshiko-pytorch-bf16
+
+param_dtype: bfloat16
+overwrite_run_dir: true
+rope_continuous: true
+rope_reset_on_new_file: true

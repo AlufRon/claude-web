@@ -1,0 +1,82 @@
+
+# data
+data:
+  train_data: /sise/eliyanac-group/ron_al/seamless_interaction/daily_format_output/dailytalk.jsonl
+  eval_data: /sise/eliyanac-group/ron_al/seamless_interaction/daily_format_output/dailytalk.jsonl
+  shuffle: false
+
+ttt:
+  enable: false  # DISABLED for LoRA baseline comparison
+  layers: "31"  # Single final layer
+  base_lr: 0.1  # 10x more aggressive TTT learning
+  mini_batch_size: 16  # Very small TTT mini-batch
+  persistent_states: true  # Enable TTT state persistence (JAX-style) - set to true for persistent states
+
+# model
+moshi_paths: 
+  hf_repo_id: "kyutai/moshiko-pytorch-bf16"
+
+full_finetuning: false # Activate lora.enable if partial finetuning
+lora:
+  enable: true # ENABLED for LoRA baseline comparison
+  rank: 64
+  scaling: 2.
+  ft_embed: false # Optional, set to True if you want to finetune the embedding layer
+
+paper_metrics:
+  paper_metrics_eval: true
+  paper_metrics_freq: 50  # Evaluate every 10 steps
+  # OPTIMAL CONFIGURATION: Natural silence codes for +2-6% performance boost
+  paper_metrics_use_silence: true
+  # Cross-stream evaluation (experimental - for architecture research)
+  paper_metrics_use_user_stream: false
+  sblimp_audio_dir: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/
+  sblimp_gold_csv: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/gold.csv
+  sblimp_max_pairs: 2000  # Evaluation sample size  
+  sstory_audio_dir: /sise/eliyanac-group/ron_al/sSC/sSC/
+  sstory_max_pairs: 2000
+  swuggy_audio_dir: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/
+  swuggy_gold_csv: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/gold.csv
+  swuggy_max_pairs: 2000
+  tstory_audio_dir: /sise/eliyanac-group/ron_al/tSC/tSC/
+  tstory_max_pairs: 2000
+  # LibriLight Long Context Evaluation (TTT Paper methodology)
+  librilight_audio_dir: /sise/eliyanac-group/ron_al/librilight/extracted_medium/medium/
+  librilight_evaluation_mode: single_book  # Options: single_book, multi_book, random
+  librilight_speaker_id: "100"  # Specific speaker for single_book mode
+  librilight_book_name: "emerald_city_librivox_64kb_mp3"  # Specific book for single_book mode
+  librilight_max_chapters: 3  # Number of chapters to concatenate per sequence
+  librilight_num_sequences: 1  # Number of different sequences for multi_book mode
+
+
+first_codebook_weight_multiplier: 100.
+text_padding_weight: .5
+
+# optim
+duration_sec: 15
+batch_size: 1
+max_steps: 1000
+gradient_checkpointing: true
+optim:
+  lr: 2e-5
+  weight_decay: 0.1
+  pct_start: 0.05
+
+# other
+seed: 42
+log_freq: 10
+eval_freq: 50
+do_eval: true
+do_ckpt: true
+ckpt_freq: 200
+
+
+save_adapters: true # Must be False if full_finetuning is True
+
+run_dir: /sise/eliyanac-group/ron_al/seamless_lora_aggressive_lr_truncation_fix_1000steps
+ # TTT Aggressive LR + Truncation Fix - Seamless Dataset
+
+wandb:
+  project: ttt-moshi-production
+  offline: false
+  run_name: seamless_lora_aggressive_lr_truncation_fix_1000steps

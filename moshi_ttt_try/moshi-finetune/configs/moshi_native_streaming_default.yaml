@@ -1,0 +1,125 @@
+# Moshi-Native Streaming Configuration (Default)
+#
+# This configuration sets up TTT for optimal compatibility with Moshi's native
+# token-by-token streaming architecture. This is now the DEFAULT approach for
+# LibriLight evaluation, following TTT paper insights and Moshi's S=1 constraint.
+
+# ===========================================
+# TTT Configuration for Moshi-Native Streaming
+# ===========================================
+
+ttt:
+  enable: true
+  layers: "middle"
+  
+  # TTT Online Gradient Descent (matches TTT paper recommendation)
+  mini_batch_size: 1               # Single token per mini-batch (online GD)
+  base_lr: 0.025                   # Reduced from 0.1 to compensate for higher effective LR
+  persistent_states: true          # Enable state persistence across tokens
+  
+  # Moshi-Native streaming doesn't use chunking optimization
+  optimize_chunk_size: false       # Disabled for token-by-token processing
+  chunk_size: 1                    # Single token per "chunk"
+  max_chunk_size: 1               # Force single-token processing
+  prefer_efficiency: false         # Prioritize adaptation over efficiency
+
+# ===========================================
+# Why This Configuration?
+# ===========================================
+#
+# 1. TTT Paper Evidence:
+#    - "Smaller b improves perplexity since more GD steps are taken"
+#    - b=1 (online GD) gives best perplexity but worst speed
+#    - mini_batch_size=1 provides maximum adaptation per token
+#
+# 2. Moshi Streaming Constraint:
+#    - Native Moshi streaming uses S=1 (one token per step)
+#    - LMGen._step() asserts: "Only support being given steps one by one"
+#    - This approach matches Moshi's inference architecture exactly
+#
+# 3. Learning Rate Compensation:
+#    - Original: base_lr=0.1, mini_batch_size=4 → effective_lr=0.025
+#    - Native: base_lr=0.025, mini_batch_size=1 → effective_lr=0.025
+#    - Maintains similar learning dynamics while enabling online GD
+#
+# 4. Maximum TTT Utilization:
+#    - Each token gets individual TTT gradient update
+#    - No padding or efficiency loss (every token is processed)
+#    - TTT state persists and accumulates across entire sequence
+
+# ===========================================
+# Expected Performance Characteristics
+# ===========================================
+#
+# Compared to chunked evaluation:
+# ✅ Better perplexity (online GD advantage from TTT paper)
+# ✅ Maximum TTT adaptation (seq_length gradient updates)
+# ✅ True streaming compatibility (matches Moshi inference)
+# ✅ No efficiency loss (100% token utilization)
+# ❌ Slower speed (no parallelization benefits)
+# ❌ Higher memory per token (no chunking optimization)
+
+# ===========================================
+# Model Configuration (for reference)
+# ===========================================
+
+model:
+  name: moshi_weight                 # Use standard Moshi weights
+  device: cuda                      # GPU required for reasonable speed
+
+training:
+  lr: 3.6e-06                      # Standard training LR (unrelated to TTT base_lr)
+  batch_size: 1                    # Keep standard training batch size
+
+# ===========================================
+# LibriLight Evaluation Configuration
+# ===========================================
+
+paper_metrics:
+  librilight_streaming:
+    enabled: true                   # Enable LibriLight evaluation
+    memory_check: true             # Monitor memory usage
+    max_sequence_length: 24000     # Standard LibriLight sequence limit
+    cache_clear_interval: 3000     # Memory cleanup frequency
+
+# ===========================================
+# Advanced: Performance Tuning Options
+# ===========================================
+
+# For faster experimentation (shorter sequences):
+librilight_dev:
+  paper_metrics:
+    librilight_streaming:
+      max_sequence_length: 5000    # Shorter sequences for testing
+
+# For memory-constrained environments:
+librilight_memory_limited:
+  paper_metrics:
+    librilight_streaming:
+      max_sequence_length: 10000   # Reduce sequence length
+      cache_clear_interval: 1000   # More frequent cleanup
+
+# For comparison with old chunking approach:
+librilight_chunked_comparison:
+  ttt:
+    mini_batch_size: 4             # Original configuration
+    base_lr: 0.1                   # Original learning rate
+    optimize_chunk_size: true      # Enable chunking optimization
+    chunk_size: null               # Auto-calculate optimal chunk size
+    max_chunk_size: 50            # Standard chunk size
+
+# ===========================================
+# Migration Notes
+# ===========================================
+#
+# Migrating from chunked evaluation:
+# 1. Results will NOT be directly comparable (different methodology)
+# 2. Expect better perplexity but slower evaluation speed
+# 3. TTT adaptation patterns will be different (more frequent updates)
+# 4. Memory usage patterns will change (per-token vs per-chunk)
+#
+# This is the NEW DEFAULT because it:
+# - Follows TTT paper recommendations for best perplexity
+# - Matches Moshi's native streaming architecture
+# - Provides maximum TTT adaptation potential
+# - Eliminates artificial chunking artifacts

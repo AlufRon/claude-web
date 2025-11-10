@@ -1,0 +1,209 @@
+{
+  "runs": [
+    {
+      "checkpoint_path": "None",
+      "results_file": "/home/alufr/ttt_tests/moshi-finetune/baseline_paper_metrics_results.json",
+      "added_at": "2025-10-19T13:43:09.135452"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight3/checkpoints/checkpoint_002000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight3/checkpoints/checkpoint_002000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-19T14:38:23.211945"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight6/checkpoints/checkpoint_002000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight6/checkpoints/checkpoint_002000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-19T15:09:20.221157"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight5/checkpoints/checkpoint_002000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight5/checkpoints/checkpoint_002000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-19T15:21:33.926354"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight11/checkpoints/checkpoint_000200/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight11/checkpoints/checkpoint_000200/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-19T15:26:21.164829"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight18/checkpoints/checkpoint_001600/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight18/checkpoints/checkpoint_001600/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-19T21:20:27.959758"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight17/checkpoints/checkpoint_000100/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight17/checkpoints/checkpoint_000100/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-19T21:34:21.303552"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight17/checkpoints/checkpoint_001900/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight17/checkpoints/checkpoint_001900/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-20T15:44:50.927745"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight18/checkpoints/checkpoint_010000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight18/checkpoints/checkpoint_010000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-20T18:32:31.641813"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight18/checkpoints/checkpoint_015000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight18/checkpoints/checkpoint_015000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-20T18:53:20.471568"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight18/checkpoints/checkpoint_020000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight18/checkpoints/checkpoint_020000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-20T19:49:07.104173"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight18lora/checkpoints/checkpoint_005000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight18lora/checkpoints/checkpoint_005000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-21T19:12:47.461820"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight18/checkpoints/checkpoint_005000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight18/checkpoints/checkpoint_005000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-21T20:41:17.068338"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight20lorattt/checkpoints/checkpoint_020000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight20lorattt/checkpoints/checkpoint_020000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-22T02:56:21.355829"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight20lora/checkpoints/checkpoint_010000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight20lora/checkpoints/checkpoint_010000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-22T03:50:45.143263"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight20lorattt/checkpoints/checkpoint_004000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight20lorattt/checkpoints/checkpoint_004000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-22T05:22:19.923032"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight20lorattt/checkpoints/checkpoint_002000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight20lorattt/checkpoints/checkpoint_002000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-22T06:59:01.540098"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight20lorattt/checkpoints/checkpoint_001200/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight20lorattt/checkpoints/checkpoint_001200/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-22T21:42:41.261651"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight21lorattt/checkpoints/checkpoint_000400/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight21lorattt/checkpoints/checkpoint_000400/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-22T22:24:33.207254"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight21lorattt/checkpoints/checkpoint_002000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight21lorattt/checkpoints/checkpoint_002000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-22T22:58:02.187933"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight21lora/checkpoints/checkpoint_000300/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight21lora/checkpoints/checkpoint_000300/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-23T15:28:08.493870"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight21lora/checkpoints/checkpoint_001300/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight21lora/checkpoints/checkpoint_001300/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-23T21:39:13.602108"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight21lora/checkpoints/checkpoint_001600/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight21lora/checkpoints/checkpoint_001600/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-23T21:42:19.054422"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight20lora/checkpoints/checkpoint_005000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight20lora/checkpoints/checkpoint_005000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-23T22:02:15.753645"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight23lorattt/checkpoints/checkpoint_002000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight23lorattt/checkpoints/checkpoint_002000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-23T23:14:46.953402"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight21lorattt/checkpoints/checkpoint_001200/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight21lorattt/checkpoints/checkpoint_001200/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-23T23:22:51.114155"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight21lorattt/checkpoints/checkpoint_001400/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight21lorattt/checkpoints/checkpoint_001400/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-23T23:27:11.375715"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight24lora1/checkpoints/checkpoint_002000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight24lora1/checkpoints/checkpoint_002000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-24T19:29:52.332621"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight25ttt/checkpoints/checkpoint_002000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight25ttt/checkpoints/checkpoint_002000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-24T20:20:54.326194"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight21lorattt/checkpoints/checkpoint_001700/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight21lorattt/checkpoints/checkpoint_001700/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-25T01:18:36.007489"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight2255ttt1/checkpoints/checkpoint_010000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight2255ttt1/checkpoints/checkpoint_010000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-25T05:37:36.120917"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight2255ttt/checkpoints/checkpoint_005000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight2255ttt/checkpoints/checkpoint_005000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-25T05:42:35.260408"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight2255ttt/checkpoints/checkpoint_010000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight2255ttt/checkpoints/checkpoint_010000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-25T17:43:00.106011"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight2255lora122/checkpoints/checkpoint_005000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight2255lora122/checkpoints/checkpoint_005000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-26T04:03:23.212855"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_multilr_conservative1/checkpoints/checkpoint_010000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_multilr_conservative1/checkpoints/checkpoint_010000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-26T16:56:55.292839"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_multilr_conservative3/checkpoints/checkpoint_002000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_multilr_conservative3/checkpoints/checkpoint_002000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-27T03:57:21.320115"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_multilr_conservative4/checkpoints/checkpoint_010000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/dailytalk_multilr_conservative4/checkpoints/checkpoint_010000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-10-27T14:36:29.311478"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/ttt6callhome35/checkpoints/checkpoint_010000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/ttt6callhome35/checkpoints/checkpoint_010000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-11-02T01:48:26.538029"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/ttt_videodit_callhome8/checkpoints/checkpoint_001000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/ttt_videodit_callhome8/checkpoints/checkpoint_001000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-11-03T16:19:02.391947"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/ttt_videodit_callhome6/checkpoints/checkpoint_001000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/ttt_videodit_callhome6/checkpoints/checkpoint_001000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-11-03T17:40:08.539989"
+    },
+    {
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/ttt_videodit_callhome9/checkpoints/checkpoint_001000/consolidated",
+      "results_file": "/sise/eliyanac-group/ron_al/ttt_videodit_callhome9/checkpoints/checkpoint_001000/consolidated/paper_metrics_results.json",
+      "added_at": "2025-11-03T17:42:24.710386"
+    }
+  ]
+}

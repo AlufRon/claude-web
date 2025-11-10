@@ -1,0 +1,97 @@
+# LibriLight Test Configuration
+# Purpose: Quick test run to verify system works
+# Duration: ~5-10 minutes
+
+run_dir: /sise/eliyanac-group/ron_al/librilight_ttt_test4
+
+# Data configuration
+data:
+  train_data: /sise/eliyanac-group/ron_al/librilight/extracted_medium/medium/librilight.jsonl
+  eval_data: ""
+  shuffle: false
+
+duration_sec: 10  # Short sequences for quick test
+
+# Model paths - start from base Moshi model
+moshi_paths:
+  hf_repo_id: kyutai/moshiko-pytorch-bf16
+  mimi_path: null
+  moshi_path: null
+  tokenizer_path: null
+  config_path: null
+
+# Training hyperparameters - REDUCED FOR TESTING
+batch_size: 1  # Small batch for testing
+num_microbatches: 1
+max_steps: 5  # Just 5 steps to verify it works
+log_freq: 1  # Log every step
+ckpt_freq: 5  # Checkpoint at end
+num_ckpt_keep: 1
+do_ckpt: true
+do_eval: false
+seed: 42
+
+# Text weighting (CRITICAL for LibriLight audio-only training)
+first_codebook_weight_multiplier: 1.0
+text_padding_weight: 0.00001  # Zero weight for text (audio-only training)
+
+# Optimizer settings
+optim:
+  lr: 1e-6
+  weight_decay: 0.1
+  pct_start: 0.05
+
+# LoRA configuration (freeze base model, train only adapters + TTT)
+lora:
+  enable: false
+  rank: 64
+  scaling: 2.0
+  ft_embed: false
+
+full_finetuning: false
+save_adapters: true
+
+# TTT Configuration (CRITICAL - enables TTT layers)
+ttt:
+  enable: false
+  layers: 29,30,31  # TTT in middle layers for balance
+  base_lr: 1.0
+  mini_batch_size: 16
+  persistent_states: true
+  initial_gating_alpha: 0.1
+
+  # TTT-MLP Architecture (5-layer for expressiveness)
+  ttt_mlp_layers: 5
+  ttt_mlp_hidden_dims: null  # Auto-calculate from expansion_factor
+  ttt_mlp_expansion_factor: 4.0
+
+  # Inner loop diagnostics (optional)
+  log_inner_loop_losses: false
+  inner_loop_log_interval: 10
+  save_inner_loop_plots: false
+  inner_loop_plot_dir: ./evaluation_plots/inner_loop
+
+  # LibriLight evaluation settings (TTT-optimized chunking)
+  optimize_chunk_size: true
+  chunk_size: null  # Auto-calculate from mini_batch_size
+  max_chunk_size: 50
+  prefer_efficiency: true
+
+# Efficiency settings
+gradient_checkpointing: true
+max_norm: 1.0
+
+# Weights & Biases logging
+wandb:
+  project: null  # Disable wandb for test
+  offline: false
+  key: null
+  run_name: null
+
+# Checkpoint resuming (not used for initial training)
+resume_from: null
+reset_optimizer: false
+reset_step: false
+
+param_dtype: bfloat16
+overwrite_run_dir: true  # Allow overwriting for test runs

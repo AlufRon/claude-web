@@ -1,0 +1,97 @@
+# Quick Figure 5 Generation Config
+# Based on moshi_7B_multilayer_with_ttt.yaml but optimized for fast Figure 5 plots
+
+# data
+data:
+  train_data: /sise/eliyanac-group/ron_al/seamless_interaction/daily_format_output/dailytalk.jsonl
+  eval_data: /sise/eliyanac-group/ron_al/seamless_interaction/daily_format_output/dailytalk.jsonl
+  shuffle: false
+
+ttt:
+  enable: true
+  layers: "29,30,31"  # Same layers but with smaller gating
+  base_lr: 1.0
+  mini_batch_size: 32
+  persistent_states: true
+  # NEW: Much smaller initial gating alpha to prevent forgetting
+  initial_gating_alpha: 0.05 # Start at 1% instead of 10%
+  
+  # Figure 4: Inner loop loss tracking (OPTIONAL - for analysis/debugging)
+  log_inner_loop_losses: true           # Enable reconstruction loss logging
+  inner_loop_log_interval: 1            # Log every position (1 = all, 10 = every 10th, etc.)
+  save_inner_loop_plots: true           # Auto-generate Figure 4 plots
+  inner_loop_plot_dir: "./evaluation_plots/inner_loop"  # Where to save plots
+  
+  # NEW: Multi-layer TTT-MLP Configuration
+  ttt_mlp_layers: 5                     # Use 2-layer MLP
+  ttt_mlp_expansion_factor: 4.0         # 4x expansion per layer (head_dim * 4 = intermediate size)
+
+# model
+moshi_paths: 
+  hf_repo_id: "kyutai/moshiko-pytorch-bf16"
+
+full_finetuning: false
+lora:
+  enable: false
+  rank: 128
+  scaling: 2.
+  ft_embed: false
+
+paper_metrics:
+  paper_metrics_eval: true
+  paper_metrics_freq: 2000
+  # JSON results saving (NEW FEATURE)
+  save_results_json: true
+  results_dir: "./evaluation_results"
+  # OPTIMAL CONFIGURATION: Natural silence codes for +2-6% performance boost
+  paper_metrics_use_silence: true
+  # Cross-stream evaluation (experimental - for architecture research)
+  paper_metrics_use_user_stream: false
+  
+  # === Figure 5: TTT Loss Trajectories (MAIN FOCUS) ===
+  ttt_fig5_enable: true              # Enable Figure 5 plotting
+  ttt_fig5_max_T: 2048               # Maximum position to track (2048 = ~6 seconds of audio)
+  ttt_fig5_layers: [29, 30, 31]      # TTT layers to analyze
+  ttt_fig5_smooth: 10                # Smoothing window size for plots
+  
+  # LibriLight Long Context Evaluation - QUICK MODE FOR FIGURE 5
+  librilight_evaluation_mode: pre_concatenated
+  librilight_concatenated_dir: /home/alufr/ttt_tests/librilight_1hour_sequences
+  librilight_max_files: 1            # Only 1 file for quick Figure 5 generation
+  librilight_max_tokens: 3000        # STOP EARLY: Only process 3k tokens (enough for Figure 5)
+  
+  # Disable other evaluations for speed
+  sblimp_max_pairs: 0                # Skip SBLIMP
+  sstory_max_pairs: 0                # Skip S-Story  
+  swuggy_max_pairs: 0                # Skip S-Wuggy
+  tstory_max_pairs: 0                # Skip T-Story
+
+first_codebook_weight_multiplier: 100.
+text_padding_weight: .5
+
+# optim - minimal steps for quick evaluation
+duration_sec: 15
+batch_size: 1
+max_steps: 10                          # Just 1 step needed for evaluation
+gradient_checkpointing: true
+optim:
+  lr: 9e-4
+  weight_decay: 0.01
+  pct_start: 0.05
+
+# other
+seed: 42
+log_freq: 10
+eval_freq: 10                         # Evaluate immediately (step 1)
+do_eval: true
+do_ckpt: false                        # No checkpointing needed
+ckpt_freq: 100
+
+save_adapters: false                  # No saving needed
+
+run_dir: /sise/eliyanac-group/ron_al/seamless_moksvbmkkvlblmmmhkv0avmbs11 # Temporary directory
+
+wandb:
+  project: ttt-moshi-figure5-quick
+  offline: false
+  run_name: figure5-quick-generation

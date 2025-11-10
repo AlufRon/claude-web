@@ -1,0 +1,77 @@
+# TTT DEEP INTEGRATION - Extended Layer Coverage for Long-Context Performance
+# data
+data:
+  train_data: /sise/eliyanac-group/ron_al/seamless_interaction/daily_format_output/dailytalk.jsonl
+  eval_data: /sise/eliyanac-group/ron_al/seamless_interaction/daily_format_output/dailytalk.jsonl
+  shuffle: false
+
+ttt:
+  enable: true  # TTT ENABLED with deep layer integration
+  layers: "27,28,29,30,31"  # 5 layers (deeper than current 3-layer max)
+  base_lr: 0.005   # Between standard (0.001) and aggressive (0.01)
+  mini_batch_size: 32  # Larger context per TTT update
+  persistent_states: true  # Enable TTT state persistence
+
+# model
+moshi_paths: 
+  hf_repo_id: "kyutai/moshiko-pytorch-bf16"
+
+full_finetuning: false 
+lora:
+  enable: true 
+  rank: 64
+  scaling: 2.
+  ft_embed: false 
+
+paper_metrics:
+  paper_metrics_eval: true
+  paper_metrics_freq: 10  # Evaluate every 10 steps
+  paper_metrics_use_silence: true
+  paper_metrics_use_user_stream: false
+  sblimp_audio_dir: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/
+  sblimp_gold_csv: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/gold.csv
+  sblimp_max_pairs: 10
+  sstory_audio_dir: /sise/eliyanac-group/ron_al/sSC/sSC/
+  sstory_max_pairs: 10
+  swuggy_audio_dir: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/
+  swuggy_gold_csv: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/gold.csv
+  swuggy_max_pairs: 10
+  tstory_audio_dir: /sise/eliyanac-group/ron_al/tSC/tSC/
+  tstory_max_pairs: 10
+  # LibriLight Long Context Evaluation (TTT Paper methodology)
+  librilight_audio_dir: /sise/eliyanac-group/ron_al/librilight/extracted_medium/medium/
+  librilight_evaluation_mode: single_book
+  librilight_speaker_id: "100"
+  librilight_book_name: "emerald_city_librivox_64kb_mp3"
+  librilight_max_chapters: 4  # More chapters for longer context
+  librilight_num_sequences: 1
+
+first_codebook_weight_multiplier: 100.
+text_padding_weight: .5
+
+# optim - optimized for longer sequences and deeper TTT
+duration_sec: 450  # 50% longer conversations for long-context advantage
+batch_size: 1      # Keep batch size 1 for memory efficiency
+max_steps: 2000    # Standard run length
+gradient_checkpointing: true
+optim:
+  lr: 1e-6
+  weight_decay: 0.1
+  pct_start: 0.05
+
+# other
+seed: 42  # Unique seed for independent comparison
+log_freq: 10
+eval_freq: 50  # Regular evaluation
+do_eval: true
+do_ckpt: true
+ckpt_freq: 50
+
+save_adapters: true
+
+run_dir: /sise/eliyanac-group/ron_al/ttt_deep_integration
+
+wandb:
+  project: ttt-moshi-long-conversations
+  offline: false
+  run_name: ttt_deep_5layers_lr0.005_mb32_450s

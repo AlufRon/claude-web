@@ -1,0 +1,97 @@
+# LibriLight TTT Pre-training - 100 Steps
+# Purpose: Pre-train TTT layers on audio-only data (LibriLight)
+# This checkpoint will later be used for DailyTalk fine-tuning
+
+run_dir: /sise/eliyanac-group/ron_al/librilight_ttt_pretrain_100
+
+# Data configuration
+data:
+  train_data: /sise/eliyanac-group/ron_al/librilight/extracted_medium/medium/librilight.jsonl
+  eval_data: ""
+  shuffle: false
+
+duration_sec: 10  # 10-second audio segments for good context
+
+# Model paths - start from base Moshi model
+moshi_paths:
+  hf_repo_id: kyutai/moshiko-pytorch-bf16
+  mimi_path: null
+  moshi_path: null
+  tokenizer_path: null
+  config_path: null
+
+# Training hyperparameters
+batch_size: 1
+num_microbatches: 1
+max_steps: 100  # 100 steps for initial pre-training
+log_freq: 5     # Log every 5 steps
+ckpt_freq: 25   # Checkpoint every 25 steps
+num_ckpt_keep: 2  # Keep last 2 checkpoints
+do_ckpt: true
+do_eval: false
+seed: 42
+
+# Text weighting (CRITICAL for LibriLight audio-only training)
+first_codebook_weight_multiplier: 1.0
+text_padding_weight: 0.00001  # Very small weight for text padding (audio-only focus)
+
+# Optimizer settings
+optim:
+  lr: 1e-5
+  weight_decay: 0.1
+  pct_start: 0.05
+
+# LoRA configuration (disabled - using only TTT)
+lora:
+  enable: false
+  rank: 64
+  scaling: 2.0
+  ft_embed: false
+
+full_finetuning: false
+save_adapters: true  # Save TTT parameters
+
+# TTT Configuration (ENABLED - 3 layers for audio adaptation)
+ttt:
+  enable: true
+  layers: "29,30,31"  # Top 3 layers for TTT adaptation
+  base_lr: 1.0
+  mini_batch_size: 16
+  persistent_states: true
+  initial_gating_alpha: 0.1
+
+  # TTT-MLP Architecture
+  ttt_mlp_layers: 5
+  ttt_mlp_hidden_dims: null  # Auto-calculate from expansion_factor
+  ttt_mlp_expansion_factor: 4.0
+
+  # Inner loop diagnostics (disabled for performance)
+  log_inner_loop_losses: false
+  inner_loop_log_interval: 10
+  save_inner_loop_plots: false
+  inner_loop_plot_dir: ./evaluation_plots/inner_loop
+
+  # Chunking settings for LibriLight
+  optimize_chunk_size: true
+  chunk_size: null  # Auto-calculate from mini_batch_size
+  max_chunk_size: 50
+  prefer_efficiency: true
+
+# Efficiency settings
+gradient_checkpointing: false  # Disabled to avoid tensor mismatch issues
+max_norm: 1.0
+
+# Weights & Biases logging (optional)
+wandb:
+  project: librilight-ttt-pretrain
+  offline: false
+  key: null
+  run_name: librilight_ttt_100steps
+
+# Checkpoint resuming (not used for initial training)
+resume_from: null
+reset_optimizer: false
+reset_step: false
+
+param_dtype: bfloat16
+overwrite_run_dir: true

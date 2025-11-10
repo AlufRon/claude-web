@@ -1,0 +1,2544 @@
+{
+  "schema_version": "1.0",
+  "metadata": {
+    "generated_at": "2025-10-20T10:20:45.060000",
+    "total_runs": 5,
+    "checkpoint_base_paths": [
+      "/sise/eliyanac-group/ron_al"
+    ]
+  },
+  "baseline": {
+    "id": "baseline_pretrained",
+    "name": "Baseline - kyutai/moshiko-pytorch-bf16",
+    "metrics": {
+      "sblimp_accuracy": 0.545,
+      "sblimp_samples": 1000,
+      "swuggy_accuracy": 0.6335,
+      "swuggy_samples": 2000,
+      "tstory_accuracy": 0.8006413682522715,
+      "tstory_samples": 1871,
+      "sstory_accuracy": 0.6092998396579369,
+      "sstory_samples": 1871,
+      "librilight_perplexity_8k": 47592.50476402982,
+      "librilight_perplexity_16k": 13789.582062289292,
+      "librilight_perplexity_24k": 1297.0412106574258,
+      "librilight_slope": 1.7631071314174487e-05,
+      "librilight_samples": 129574,
+      "paper_metrics_avg": 0.6471103019775521
+    }
+  },
+  "runs": [
+    {
+      "id": "dailytalk_finetune_from_librilight3_cp002000",
+      "name": "CP2000 - dailytalk_from_librilight_100steps15",
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight3/checkpoints/checkpoint_002000/consolidated",
+      "checkpoint_step": 2000,
+      "evaluation_timestamp": "2025-10-19T14:38:23.211519",
+      "training_config": {
+        "data": {
+          "train_data": "/sise/eliyanac-group/ron_al/daily-talk-contiguous/train/dailytalk_train.jsonl",
+          "shuffle": false,
+          "eval_data": ""
+        },
+        "run_dir": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight3",
+        "moshi_paths": {
+          "hf_repo_id": "kyutai/moshiko-pytorch-bf16",
+          "mimi_path": null,
+          "moshi_path": null,
+          "tokenizer_path": null,
+          "config_path": null
+        },
+        "first_codebook_weight_multiplier": 100.0,
+        "text_padding_weight": 0.5,
+        "optim": {
+          "lr": 5e-05,
+          "weight_decay": 0.1,
+          "pct_start": 0.05
+        },
+        "seed": 42,
+        "num_microbatches": 1,
+        "duration_sec": 200.0,
+        "batch_size": 2,
+        "max_norm": 1.0,
+        "max_steps": 2000,
+        "log_freq": 5,
+        "ckpt_freq": 100,
+        "save_adapters": true,
+        "do_ckpt": true,
+        "num_ckpt_keep": 2,
+        "eval_freq": 0,
+        "do_eval": false,
+        "gradient_checkpointing": false,
+        "world_size": 1,
+        "wandb": {
+          "project": "dailytalk-ttt-finetune",
+          "offline": false,
+          "key": null,
+          "run_name": "dailytalk_from_librilight_100steps15"
+        },
+        "lora": {
+          "enable": false,
+          "rank": 64,
+          "scaling": 2.0,
+          "ft_embed": false
+        },
+        "full_finetuning": false,
+        "ttt": {
+          "enable": true,
+          "layers": "29,30,31",
+          "base_lr": 1.0,
+          "mini_batch_size": 64,
+          "persistent_states": true,
+          "initial_gating_alpha": 0.001,
+          "override_gating_alpha_on_resume": true,
+          "log_inner_loop_losses": false,
+          "inner_loop_log_interval": 10,
+          "save_inner_loop_plots": false,
+          "inner_loop_plot_dir": "./evaluation_plots/inner_loop",
+          "optimize_chunk_size": true,
+          "chunk_size": null,
+          "max_chunk_size": 50,
+          "prefer_efficiency": true,
+          "ttt_mlp_layers": 3,
+          "ttt_mlp_hidden_dims": null,
+          "ttt_mlp_expansion_factor": 4.0,
+          "normalize_ttt_output": true,
+          "target_output_norm": 25.0
+        },
+        "paper_metrics": {
+          "paper_metrics_eval": true,
+          "paper_metrics_freq": 1000,
+          "save_results_json": true,
+          "results_dir": "./evaluation_results",
+          "paper_metrics_use_silence": true,
+          "paper_metrics_use_user_stream": false,
+          "ttt_fig5_enable": false,
+          "ttt_fig5_max_T": 2048,
+          "ttt_fig5_layers": [
+            29,
+            30,
+            31
+          ],
+          "ttt_fig5_smooth": 10,
+          "sblimp_audio_dir": "/sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/",
+          "sblimp_gold_csv": "/sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/gold.csv",
+          "sblimp_max_pairs": 100,
+          "sstory_audio_dir": "/sise/eliyanac-group/ron_al/sSC/sSC/",
+          "sstory_max_pairs": 100,
+          "swuggy_audio_dir": "/sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/",
+          "swuggy_gold_csv": "/sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/gold.csv",
+          "swuggy_max_pairs": 100,
+          "tstory_audio_dir": "/sise/eliyanac-group/ron_al/tSC/tSC/",
+          "tstory_max_pairs": 100,
+          "librilight_evaluation_mode": "pre_concatenated",
+          "librilight_concatenated_dir": "/home/alufr/ttt_tests/librilight_1hour_sequences",
+          "librilight_max_files": 3
+        },
+        "param_dtype": "bfloat16",
+        "overwrite_run_dir": true,
+        "resume_from": null,
+        "reset_optimizer": false,
+        "reset_step": false
+      },
+      "metrics": {
+        "sblimp_accuracy": 0.554,
+        "sblimp_samples": 1000,
+        "swuggy_accuracy": 0.6495,
+        "swuggy_samples": 2000,
+        "tstory_accuracy": 0.8022447888829503,
+        "tstory_samples": 1871,
+        "sstory_accuracy": 0.6109032602886157,
+        "sstory_samples": 1871,
+        "librilight_perplexity_8k": 41728.430002910914,
+        "librilight_perplexity_16k": 811.9432639179149,
+        "librilight_perplexity_24k": 28764.470687631867,
+        "librilight_slope": 2.2545725346625426e-05,
+        "librilight_samples": 129574,
+        "paper_metrics_avg": 0.6541620122928915
+      },
+      "librilight_progression": [],
+      "librilight_progression_mean": [],
+      "librilight_progression_median": [],
+      "librilight_progression_individual": [],
+      "tags": [
+        "ttt",
+        "ttt-layers-29-30-31",
+        "high-lr",
+        "daily-talk",
+        "long-training"
+      ],
+      "notes": "TTT training on layers 29,30,31 | Base LR: 1.0 | Gating alpha: 0.001 | Data: train | Trained for 2000 steps"
+    },
+    {
+      "id": "dailytalk_finetune_from_librilight6_cp002000",
+      "name": "CP2000 - dailytalk_from_librilight_100steps15",
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight6/checkpoints/checkpoint_002000/consolidated",
+      "checkpoint_step": 2000,
+      "evaluation_timestamp": "2025-10-19T15:09:20.221454",
+      "training_config": {
+        "data": {
+          "train_data": "/sise/eliyanac-group/ron_al/daily-talk-contiguous/train/dailytalk_train.jsonl",
+          "shuffle": false,
+          "eval_data": ""
+        },
+        "run_dir": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight6",
+        "moshi_paths": {
+          "hf_repo_id": "kyutai/moshiko-pytorch-bf16",
+          "mimi_path": null,
+          "moshi_path": null,
+          "tokenizer_path": null,
+          "config_path": null
+        },
+        "first_codebook_weight_multiplier": 100.0,
+        "text_padding_weight": 0.5,
+        "optim": {
+          "lr": 5e-05,
+          "weight_decay": 0.1,
+          "pct_start": 0.05
+        },
+        "seed": 42,
+        "num_microbatches": 1,
+        "duration_sec": 200.0,
+        "batch_size": 2,
+        "max_norm": 1.0,
+        "max_steps": 2000,
+        "log_freq": 5,
+        "ckpt_freq": 100,
+        "save_adapters": true,
+        "do_ckpt": true,
+        "num_ckpt_keep": 2,
+        "eval_freq": 0,
+        "do_eval": false,
+        "gradient_checkpointing": false,
+        "world_size": 1,
+        "wandb": {
+          "project": "dailytalk-ttt-finetune",
+          "offline": false,
+          "key": null,
+          "run_name": "dailytalk_from_librilight_100steps15"
+        },
+        "lora": {
+          "enable": false,
+          "rank": 64,
+          "scaling": 2.0,
+          "ft_embed": false
+        },
+        "full_finetuning": false,
+        "ttt": {
+          "enable": true,
+          "layers": "29,30,31",
+          "base_lr": 0.01,
+          "mini_batch_size": 64,
+          "persistent_states": true,
+          "initial_gating_alpha": 0.001,
+          "override_gating_alpha_on_resume": true,
+          "log_inner_loop_losses": false,
+          "inner_loop_log_interval": 10,
+          "save_inner_loop_plots": false,
+          "inner_loop_plot_dir": "./evaluation_plots/inner_loop",
+          "optimize_chunk_size": true,
+          "chunk_size": null,
+          "max_chunk_size": 50,
+          "prefer_efficiency": true,
+          "ttt_mlp_layers": 5,
+          "ttt_mlp_hidden_dims": null,
+          "ttt_mlp_expansion_factor": 4.0,
+          "normalize_ttt_output": true,
+          "target_output_norm": 25.0
+        },
+        "paper_metrics": {
+          "paper_metrics_eval": true,
+          "paper_metrics_freq": 1000,
+          "save_results_json": true,
+          "results_dir": "./evaluation_results",
+          "paper_metrics_use_silence": true,
+          "paper_metrics_use_user_stream": false,
+          "ttt_fig5_enable": false,
+          "ttt_fig5_max_T": 2048,
+          "ttt_fig5_layers": [
+            29,
+            30,
+            31
+          ],
+          "ttt_fig5_smooth": 10,
+          "sblimp_audio_dir": "/sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/",
+          "sblimp_gold_csv": "/sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/gold.csv",
+          "sblimp_max_pairs": 100,
+          "sstory_audio_dir": "/sise/eliyanac-group/ron_al/sSC/sSC/",
+          "sstory_max_pairs": 100,
+          "swuggy_audio_dir": "/sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/",
+          "swuggy_gold_csv": "/sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/gold.csv",
+          "swuggy_max_pairs": 100,
+          "tstory_audio_dir": "/sise/eliyanac-group/ron_al/tSC/tSC/",
+          "tstory_max_pairs": 100,
+          "librilight_evaluation_mode": "pre_concatenated",
+          "librilight_concatenated_dir": "/home/alufr/ttt_tests/librilight_1hour_sequences",
+          "librilight_max_files": 3
+        },
+        "param_dtype": "bfloat16",
+        "overwrite_run_dir": true,
+        "resume_from": null,
+        "reset_optimizer": false,
+        "reset_step": false
+      },
+      "metrics": {
+        "sblimp_accuracy": 0.534,
+        "sblimp_samples": 1000,
+        "swuggy_accuracy": 0.638,
+        "swuggy_samples": 2000,
+        "tstory_accuracy": 0.794762159273116,
+        "tstory_samples": 1871,
+        "sstory_accuracy": 0.6119722073757349,
+        "sstory_samples": 1871,
+        "librilight_perplexity_8k": 10244.547430326518,
+        "librilight_perplexity_16k": 3105.404553098364,
+        "librilight_perplexity_24k": 2150.390416279239,
+        "librilight_slope": 1.973696999844213e-05,
+        "librilight_samples": 129574,
+        "paper_metrics_avg": 0.6446835916622128
+      },
+      "librilight_progression": [],
+      "librilight_progression_mean": [],
+      "librilight_progression_median": [],
+      "librilight_progression_individual": [],
+      "tags": [
+        "ttt",
+        "ttt-layers-29-30-31",
+        "high-lr",
+        "daily-talk",
+        "long-training"
+      ],
+      "notes": "TTT training on layers 29,30,31 | Base LR: 0.01 | Gating alpha: 0.001 | Data: train | Trained for 2000 steps"
+    },
+    {
+      "id": "dailytalk_finetune_from_librilight5_cp002000",
+      "name": "CP2000 - dailytalk_from_librilight_100steps15",
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight5/checkpoints/checkpoint_002000/consolidated",
+      "checkpoint_step": 2000,
+      "evaluation_timestamp": "2025-10-19T15:21:33.926386",
+      "training_config": {
+        "data": {
+          "train_data": "/sise/eliyanac-group/ron_al/seamless_interaction/daily_format_output",
+          "shuffle": false,
+          "eval_data": ""
+        },
+        "run_dir": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight5",
+        "moshi_paths": {
+          "hf_repo_id": "kyutai/moshiko-pytorch-bf16",
+          "mimi_path": null,
+          "moshi_path": null,
+          "tokenizer_path": null,
+          "config_path": null
+        },
+        "first_codebook_weight_multiplier": 100.0,
+        "text_padding_weight": 0.5,
+        "optim": {
+          "lr": 5e-05,
+          "weight_decay": 0.1,
+          "pct_start": 0.05
+        },
+        "seed": 42,
+        "num_microbatches": 1,
+        "duration_sec": 200.0,
+        "batch_size": 2,
+        "max_norm": 1.0,
+        "max_steps": 2000,
+        "log_freq": 5,
+        "ckpt_freq": 100,
+        "save_adapters": true,
+        "do_ckpt": true,
+        "num_ckpt_keep": 2,
+        "eval_freq": 0,
+        "do_eval": false,
+        "gradient_checkpointing": false,
+        "world_size": 1,
+        "wandb": {
+          "project": "dailytalk-ttt-finetune",
+          "offline": false,
+          "key": null,
+          "run_name": "dailytalk_from_librilight_100steps15"
+        },
+        "lora": {
+          "enable": false,
+          "rank": 64,
+          "scaling": 2.0,
+          "ft_embed": false
+        },
+        "full_finetuning": false,
+        "ttt": {
+          "enable": true,
+          "layers": "29,30,31",
+          "base_lr": 0.01,
+          "mini_batch_size": 64,
+          "persistent_states": true,
+          "initial_gating_alpha": 0.001,
+          "override_gating_alpha_on_resume": true,
+          "log_inner_loop_losses": false,
+          "inner_loop_log_interval": 10,
+          "save_inner_loop_plots": false,
+          "inner_loop_plot_dir": "./evaluation_plots/inner_loop",
+          "optimize_chunk_size": true,
+          "chunk_size": null,
+          "max_chunk_size": 50,
+          "prefer_efficiency": true,
+          "ttt_mlp_layers": 5,
+          "ttt_mlp_hidden_dims": null,
+          "ttt_mlp_expansion_factor": 4.0,
+          "normalize_ttt_output": true,
+          "target_output_norm": 25.0
+        },
+        "paper_metrics": {
+          "paper_metrics_eval": true,
+          "paper_metrics_freq": 1000,
+          "save_results_json": true,
+          "results_dir": "./evaluation_results",
+          "paper_metrics_use_silence": true,
+          "paper_metrics_use_user_stream": false,
+          "ttt_fig5_enable": false,
+          "ttt_fig5_max_T": 2048,
+          "ttt_fig5_layers": [
+            29,
+            30,
+            31
+          ],
+          "ttt_fig5_smooth": 10,
+          "sblimp_audio_dir": "/sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/",
+          "sblimp_gold_csv": "/sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/gold.csv",
+          "sblimp_max_pairs": 100,
+          "sstory_audio_dir": "/sise/eliyanac-group/ron_al/sSC/sSC/",
+          "sstory_max_pairs": 100,
+          "swuggy_audio_dir": "/sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/",
+          "swuggy_gold_csv": "/sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/gold.csv",
+          "swuggy_max_pairs": 100,
+          "tstory_audio_dir": "/sise/eliyanac-group/ron_al/tSC/tSC/",
+          "tstory_max_pairs": 100,
+          "librilight_evaluation_mode": "pre_concatenated",
+          "librilight_concatenated_dir": "/home/alufr/ttt_tests/librilight_1hour_sequences",
+          "librilight_max_files": 3
+        },
+        "param_dtype": "bfloat16",
+        "overwrite_run_dir": true,
+        "resume_from": null,
+        "reset_optimizer": false,
+        "reset_step": false
+      },
+      "metrics": {
+        "sblimp_accuracy": 0.538,
+        "sblimp_samples": 1000,
+        "swuggy_accuracy": 0.632,
+        "swuggy_samples": 2000,
+        "tstory_accuracy": 0.7616247995724211,
+        "tstory_samples": 1871,
+        "sstory_accuracy": 0.6034206306787814,
+        "sstory_samples": 1871,
+        "librilight_perplexity_8k": 149481.29230970054,
+        "librilight_perplexity_16k": 984.2801413014912,
+        "librilight_perplexity_24k": 6123.316394311909,
+        "librilight_slope": 2.3149820794703084e-05,
+        "librilight_samples": 129574,
+        "paper_metrics_avg": 0.6337613575628006
+      },
+      "librilight_progression": [],
+      "librilight_progression_mean": [],
+      "librilight_progression_median": [],
+      "librilight_progression_individual": [],
+      "tags": [
+        "ttt",
+        "ttt-layers-29-30-31",
+        "high-lr",
+        "daily-talk",
+        "long-training"
+      ],
+      "notes": "TTT training on layers 29,30,31 | Base LR: 0.01 | Gating alpha: 0.001 | Data: seamless_interaction | Trained for 2000 steps"
+    },
+    {
+      "id": "dailytalk_finetune_from_librilight11_cp000200",
+      "name": "CP0200 - dailytalk_from_librilight_100steps15",
+      "checkpoint_path": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight11/checkpoints/checkpoint_000200/consolidated",
+      "checkpoint_step": 200,
+      "evaluation_timestamp": "2025-10-19T17:41:20.727659",
+      "training_config": {
+        "data": {
+          "train_data": "/sise/eliyanac-group/ron_al/seamless_interaction/daily_format_output",
+          "shuffle": false,
+          "eval_data": ""
+        },
+        "run_dir": "/sise/eliyanac-group/ron_al/dailytalk_finetune_from_librilight11",
+        "moshi_paths": {
+          "hf_repo_id": "kyutai/moshiko-pytorch-bf16",
+          "mimi_path": null,
+          "moshi_path": null,
+          "tokenizer_path": null,
+          "config_path": null
+        },
+        "first_codebook_weight_multiplier": 100.0,
+        "text_padding_weight": 0.5,
+        "optim": {
+          "lr": 5e-05,
+          "weight_decay": 0.1,
+          "pct_start": 0.05
+        },
+        "seed": 42,
+        "num_microbatches": 1,
+        "duration_sec": 200.0,
+        "batch_size": 2,
+        "max_norm": 1.0,
+        "max_steps": 200,
+        "log_freq": 5,
+        "ckpt_freq": 100,
+        "save_adapters": true,
+        "do_ckpt": true,
+        "num_ckpt_keep": 2,
+        "eval_freq": 0,
+        "do_eval": false,
+        "gradient_checkpointing": false,
+        "world_size": 1,
+        "wandb": {
+          "project": "dailytalk-ttt-finetune",
+          "offline": false,
+          "key": null,
+          "run_name": "dailytalk_from_librilight_100steps15"
+        },
+        "lora": {
+          "enable": false,
+          "rank": 64,
+          "scaling": 2.0,
+          "ft_embed": false
+        },
+        "full_finetuning": false,
+        "ttt": {
+          "enable": true,
+          "layers": "29,30,31",
+          "base_lr": 0.01,
+          "mini_batch_size": 64,
+          "persistent_states": true,
+          "initial_gating_alpha": 0.001,
+          "override_gating_alpha_on_resume": true,
+          "log_inner_loop_losses": false,
+          "inner_loop_log_interval": 10,
+          "save_inner_loop_plots": false,
+          "inner_loop_plot_dir": "./evaluation_plots/inner_loop",
+          "optimize_chunk_size": true,
+          "chunk_size": null,
+          "max_chunk_size": 50,
+          "prefer_efficiency": true,
+          "ttt_mlp_layers": 3,
+          "ttt_mlp_hidden_dims": null,
+          "ttt_mlp_expansion_factor": 4.0,
+          "normalize_ttt_output": true,
+          "target_output_norm": 25.0
+        },
+        "paper_metrics": {
+          "paper_metrics_eval": true,
+          "paper_metrics_freq": 1000,
+          "save_results_json": true,
+          "results_dir": "./evaluation_results",
+          "paper_metrics_use_silence": true,
+          "paper_metrics_use_user_stream": false,
+          "ttt_fig5_enable": false,
+          "ttt_fig5_max_T": 2048,
+          "ttt_fig5_layers": [
+            29,
+            30,
+            31
+          ],
+          "ttt_fig5_smooth": 10,
+          "sblimp_audio_dir": "/sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/",
+          "sblimp_gold_csv": "/sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/gold.csv",
+          "sblimp_max_pairs": 100,
+          "sstory_audio_dir": "/sise/eliyanac-group/ron_al/sSC/sSC/",
+          "sstory_max_pairs": 100,
+          "swuggy_audio_dir": "/sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/",
+          "swuggy_gold_csv": "/sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/gold.csv",
+          "swuggy_max_pairs": 100,
+          "tstory_audio_dir": "/sise/eliyanac-group/ron_al/tSC/tSC/",
+          "tstory_max_pairs": 100,
+          "librilight_evaluation_mode": "pre_concatenated",
+          "librilight_concatenated_dir": "/home/alufr/ttt_tests/librilight_1hour_sequences",
+          "librilight_max_files": 3
+        },
+        "param_dtype": "bfloat16",
+        "overwrite_run_dir": true,
+        "resume_from": null,
+        "reset_optimizer": false,
+        "reset_step": false
+      },
+      "metrics": {
+        "sblimp_accuracy": 0.547,
+        "sblimp_samples": 1000,
+        "swuggy_accuracy": 0.6545,
+        "swuggy_samples": 2000,
+        "tstory_accuracy": 0.8006413682522715,
+        "tstory_samples": 1871,
+        "sstory_accuracy": 0.6167824692677712,
+        "sstory_samples": 1871,
+        "librilight_perplexity_8k": 11097.700229705191,
+        "librilight_perplexity_16k": 10003.84532564958,
+        "librilight_perplexity_24k": 3737.4331355780796,
+        "librilight_slope": 2.047940814858674e-05,
+        "librilight_samples": 129574,
+        "paper_metrics_avg": 0.6547309593800106
+      },
+      "librilight_progression": [
+        {
+          "position": 1000,
+          "loss": 5.4818,
+          "perplexity": 240.27
+        },
+        {
+          "position": 1000,
+          "loss": 5.7418,
+          "perplexity": 311.63
+        },
+        {
+          "position": 1000,
+          "loss": 5.8059,
+          "perplexity": 332.25
+        },
+        {
+          "position": 2000,
+          "loss": 5.3958,
+          "perplexity": 220.48
+        },
+        {
+          "position": 2000,
+          "loss": 5.6693,
+          "perplexity": 289.83
+        },
+        {
+          "position": 2000,
+          "loss": 5.8284,
+          "perplexity": 339.8
+        },
+        {
+          "position": 3000,
+          "loss": 5.4079,
+          "perplexity": 223.15
+        },
+        {
+          "position": 3000,
+          "loss": 5.7004,
+          "perplexity": 298.98
+        },
+        {
+          "position": 3000,
+          "loss": 5.7991,
+          "perplexity": 330.02
+        },
+        {
+          "position": 4000,
+          "loss": 5.5426,
+          "perplexity": 255.34
+        },
+        {
+          "position": 4000,
+          "loss": 5.7159,
+          "perplexity": 303.67
+        },
+        {
+          "position": 4000,
+          "loss": 5.92,
+          "perplexity": 372.39
+        },
+        {
+          "position": 5000,
+          "loss": 5.7192,
+          "perplexity": 304.67
+        },
+        {
+          "position": 5000,
+          "loss": 5.8721,
+          "perplexity": 355.01
+        },
+        {
+          "position": 5000,
+          "loss": 6.0439,
+          "perplexity": 421.55
+        },
+        {
+          "position": 6000,
+          "loss": 5.8716,
+          "perplexity": 354.82
+        },
+        {
+          "position": 6000,
+          "loss": 5.9861,
+          "perplexity": 397.86
+        },
+        {
+          "position": 6000,
+          "loss": 6.16,
+          "perplexity": 473.43
+        },
+        {
+          "position": 7000,
+          "loss": 5.9883,
+          "perplexity": 398.74
+        },
+        {
+          "position": 7000,
+          "loss": 6.0243,
+          "perplexity": 413.34
+        },
+        {
+          "position": 7000,
+          "loss": 6.2878,
+          "perplexity": 537.98
+        },
+        {
+          "position": 8000,
+          "loss": 6.1265,
+          "perplexity": 457.82
+        },
+        {
+          "position": 8000,
+          "loss": 6.173,
+          "perplexity": 479.64
+        },
+        {
+          "position": 8000,
+          "loss": 6.4143,
+          "perplexity": 610.51
+        },
+        {
+          "position": 9000,
+          "loss": 6.2522,
+          "perplexity": 519.15
+        },
+        {
+          "position": 9000,
+          "loss": 6.3934,
+          "perplexity": 597.92
+        },
+        {
+          "position": 9000,
+          "loss": 6.5992,
+          "perplexity": 734.53
+        },
+        {
+          "position": 10000,
+          "loss": 6.4353,
+          "perplexity": 623.44
+        },
+        {
+          "position": 10000,
+          "loss": 6.6005,
+          "perplexity": 735.49
+        },
+        {
+          "position": 10000,
+          "loss": 6.8201,
+          "perplexity": 916.09
+        },
+        {
+          "position": 11000,
+          "loss": 6.5818,
+          "perplexity": 721.85
+        },
+        {
+          "position": 11000,
+          "loss": 6.766,
+          "perplexity": 867.84
+        },
+        {
+          "position": 11000,
+          "loss": 6.9762,
+          "perplexity": 1070.84
+        },
+        {
+          "position": 12000,
+          "loss": 6.7089,
+          "perplexity": 819.66
+        },
+        {
+          "position": 12000,
+          "loss": 6.9261,
+          "perplexity": 1018.56
+        },
+        {
+          "position": 12000,
+          "loss": 7.1024,
+          "perplexity": 1214.94
+        },
+        {
+          "position": 13000,
+          "loss": 6.8375,
+          "perplexity": 932.19
+        },
+        {
+          "position": 13000,
+          "loss": 7.0615,
+          "perplexity": 1166.18
+        },
+        {
+          "position": 13000,
+          "loss": 7.2137,
+          "perplexity": 1357.86
+        },
+        {
+          "position": 14000,
+          "loss": 6.951,
+          "perplexity": 1044.22
+        },
+        {
+          "position": 14000,
+          "loss": 7.1538,
+          "perplexity": 1278.92
+        },
+        {
+          "position": 14000,
+          "loss": 7.3029,
+          "perplexity": 1484.63
+        },
+        {
+          "position": 15000,
+          "loss": 7.0358,
+          "perplexity": 1136.64
+        },
+        {
+          "position": 15000,
+          "loss": 7.233,
+          "perplexity": 1384.33
+        },
+        {
+          "position": 15000,
+          "loss": 7.364,
+          "perplexity": 1578.15
+        },
+        {
+          "position": 16000,
+          "loss": 7.1136,
+          "perplexity": 1228.57
+        },
+        {
+          "position": 16000,
+          "loss": 7.3065,
+          "perplexity": 1489.93
+        },
+        {
+          "position": 16000,
+          "loss": 7.4252,
+          "perplexity": 1677.79
+        },
+        {
+          "position": 17000,
+          "loss": 7.1922,
+          "perplexity": 1328.98
+        },
+        {
+          "position": 17000,
+          "loss": 7.3737,
+          "perplexity": 1593.59
+        },
+        {
+          "position": 17000,
+          "loss": 7.4732,
+          "perplexity": 1760.28
+        },
+        {
+          "position": 18000,
+          "loss": 7.2602,
+          "perplexity": 1422.5
+        },
+        {
+          "position": 18000,
+          "loss": 7.4332,
+          "perplexity": 1691.21
+        },
+        {
+          "position": 18000,
+          "loss": 7.5313,
+          "perplexity": 1865.51
+        },
+        {
+          "position": 19000,
+          "loss": 7.3244,
+          "perplexity": 1516.9
+        },
+        {
+          "position": 19000,
+          "loss": 7.4865,
+          "perplexity": 1783.75
+        },
+        {
+          "position": 19000,
+          "loss": 7.5795,
+          "perplexity": 1957.62
+        },
+        {
+          "position": 20000,
+          "loss": 7.3815,
+          "perplexity": 1605.97
+        },
+        {
+          "position": 20000,
+          "loss": 7.5362,
+          "perplexity": 1874.65
+        },
+        {
+          "position": 20000,
+          "loss": 7.6215,
+          "perplexity": 2041.62
+        },
+        {
+          "position": 21000,
+          "loss": 7.4291,
+          "perplexity": 1684.33
+        },
+        {
+          "position": 21000,
+          "loss": 7.5855,
+          "perplexity": 1969.38
+        },
+        {
+          "position": 21000,
+          "loss": 7.6672,
+          "perplexity": 2136.99
+        },
+        {
+          "position": 22000,
+          "loss": 7.4732,
+          "perplexity": 1760.29
+        },
+        {
+          "position": 22000,
+          "loss": 7.6285,
+          "perplexity": 2055.98
+        },
+        {
+          "position": 22000,
+          "loss": 7.7059,
+          "perplexity": 2221.41
+        },
+        {
+          "position": 23000,
+          "loss": 7.5145,
+          "perplexity": 1834.43
+        },
+        {
+          "position": 23000,
+          "loss": 7.6628,
+          "perplexity": 2127.66
+        },
+        {
+          "position": 23000,
+          "loss": 7.7461,
+          "perplexity": 2312.56
+        },
+        {
+          "position": 24000,
+          "loss": 7.5466,
+          "perplexity": 1894.38
+        },
+        {
+          "position": 24000,
+          "loss": 7.6802,
+          "perplexity": 2165.06
+        },
+        {
+          "position": 24000,
+          "loss": 7.777,
+          "perplexity": 2385.0
+        },
+        {
+          "position": 25000,
+          "loss": 7.5668,
+          "perplexity": 1932.96
+        },
+        {
+          "position": 25000,
+          "loss": 7.6989,
+          "perplexity": 2205.93
+        },
+        {
+          "position": 25000,
+          "loss": 7.8035,
+          "perplexity": 2449.26
+        },
+        {
+          "position": 26000,
+          "loss": 7.5901,
+          "perplexity": 1978.58
+        },
+        {
+          "position": 26000,
+          "loss": 7.7089,
+          "perplexity": 2228.16
+        },
+        {
+          "position": 26000,
+          "loss": 7.8199,
+          "perplexity": 2489.76
+        },
+        {
+          "position": 27000,
+          "loss": 7.6175,
+          "perplexity": 2033.42
+        },
+        {
+          "position": 27000,
+          "loss": 7.7192,
+          "perplexity": 2251.24
+        },
+        {
+          "position": 27000,
+          "loss": 7.817,
+          "perplexity": 2482.55
+        },
+        {
+          "position": 28000,
+          "loss": 7.6386,
+          "perplexity": 2076.92
+        },
+        {
+          "position": 28000,
+          "loss": 7.7303,
+          "perplexity": 2276.25
+        },
+        {
+          "position": 28000,
+          "loss": 7.8229,
+          "perplexity": 2497.26
+        },
+        {
+          "position": 29000,
+          "loss": 7.657,
+          "perplexity": 2115.37
+        },
+        {
+          "position": 29000,
+          "loss": 7.7375,
+          "perplexity": 2292.82
+        },
+        {
+          "position": 29000,
+          "loss": 7.8274,
+          "perplexity": 2508.43
+        },
+        {
+          "position": 30000,
+          "loss": 7.6693,
+          "perplexity": 2141.56
+        },
+        {
+          "position": 30000,
+          "loss": 7.7295,
+          "perplexity": 2274.36
+        },
+        {
+          "position": 30000,
+          "loss": 7.8353,
+          "perplexity": 2528.28
+        },
+        {
+          "position": 31000,
+          "loss": 7.6743,
+          "perplexity": 2152.35
+        },
+        {
+          "position": 31000,
+          "loss": 7.7268,
+          "perplexity": 2268.34
+        },
+        {
+          "position": 31000,
+          "loss": 7.8349,
+          "perplexity": 2527.31
+        },
+        {
+          "position": 32000,
+          "loss": 7.6766,
+          "perplexity": 2157.33
+        },
+        {
+          "position": 32000,
+          "loss": 7.7259,
+          "perplexity": 2266.28
+        },
+        {
+          "position": 32000,
+          "loss": 7.829,
+          "perplexity": 2512.36
+        },
+        {
+          "position": 33000,
+          "loss": 7.6679,
+          "perplexity": 2138.66
+        },
+        {
+          "position": 33000,
+          "loss": 7.7232,
+          "perplexity": 2260.17
+        },
+        {
+          "position": 33000,
+          "loss": 7.8312,
+          "perplexity": 2517.92
+        },
+        {
+          "position": 34000,
+          "loss": 7.6776,
+          "perplexity": 2159.42
+        },
+        {
+          "position": 34000,
+          "loss": 7.7273,
+          "perplexity": 2269.36
+        },
+        {
+          "position": 34000,
+          "loss": 7.8349,
+          "perplexity": 2527.29
+        },
+        {
+          "position": 35000,
+          "loss": 7.6793,
+          "perplexity": 2163.07
+        },
+        {
+          "position": 35000,
+          "loss": 7.7369,
+          "perplexity": 2291.3
+        },
+        {
+          "position": 35000,
+          "loss": 7.8376,
+          "perplexity": 2534.13
+        },
+        {
+          "position": 36000,
+          "loss": 7.682,
+          "perplexity": 2169.04
+        },
+        {
+          "position": 36000,
+          "loss": 7.7461,
+          "perplexity": 2312.6
+        },
+        {
+          "position": 36000,
+          "loss": 7.844,
+          "perplexity": 2550.34
+        },
+        {
+          "position": 37000,
+          "loss": 7.6854,
+          "perplexity": 2176.33
+        },
+        {
+          "position": 37000,
+          "loss": 7.756,
+          "perplexity": 2335.54
+        },
+        {
+          "position": 37000,
+          "loss": 7.8512,
+          "perplexity": 2568.87
+        },
+        {
+          "position": 38000,
+          "loss": 7.6913,
+          "perplexity": 2189.15
+        },
+        {
+          "position": 38000,
+          "loss": 7.7652,
+          "perplexity": 2357.15
+        },
+        {
+          "position": 38000,
+          "loss": 7.8572,
+          "perplexity": 2584.32
+        },
+        {
+          "position": 39000,
+          "loss": 7.6969,
+          "perplexity": 2201.6
+        },
+        {
+          "position": 39000,
+          "loss": 7.774,
+          "perplexity": 2378.05
+        },
+        {
+          "position": 39000,
+          "loss": 7.8578,
+          "perplexity": 2585.92
+        },
+        {
+          "position": 40000,
+          "loss": 7.702,
+          "perplexity": 2212.69
+        },
+        {
+          "position": 40000,
+          "loss": 7.7855,
+          "perplexity": 2405.53
+        },
+        {
+          "position": 40000,
+          "loss": 7.8645,
+          "perplexity": 2603.09
+        },
+        {
+          "position": 41000,
+          "loss": 7.7084,
+          "perplexity": 2227.08
+        },
+        {
+          "position": 41000,
+          "loss": 7.7941,
+          "perplexity": 2426.27
+        },
+        {
+          "position": 41000,
+          "loss": 7.8728,
+          "perplexity": 2624.87
+        },
+        {
+          "position": 42000,
+          "loss": 7.7175,
+          "perplexity": 2247.3
+        },
+        {
+          "position": 42000,
+          "loss": 7.8795,
+          "perplexity": 2642.56
+        },
+        {
+          "position": 43000,
+          "loss": 7.7237,
+          "perplexity": 2261.31
+        },
+        {
+          "position": 43000,
+          "loss": 7.8864,
+          "perplexity": 2660.82
+        },
+        {
+          "position": 44000,
+          "loss": 7.8915,
+          "perplexity": 2674.55
+        }
+      ],
+      "librilight_progression_mean": [
+        {
+          "position": 1000,
+          "loss": 5.6765,
+          "perplexity": 294.7166666666667,
+          "loss_std": 0.17163411665516867,
+          "perplexity_std": 48.26619659071277,
+          "n_samples": 3
+        },
+        {
+          "position": 2000,
+          "loss": 5.631166666666667,
+          "perplexity": 283.37,
+          "loss_std": 0.21880654316846487,
+          "perplexity_std": 59.92173478797156,
+          "n_samples": 3
+        },
+        {
+          "position": 3000,
+          "loss": 5.6358,
+          "perplexity": 284.05,
+          "loss_std": 0.20344343194116662,
+          "perplexity_std": 54.977067037083735,
+          "n_samples": 3
+        },
+        {
+          "position": 4000,
+          "loss": 5.726166666666667,
+          "perplexity": 310.4666666666667,
+          "loss_std": 0.1889093521595299,
+          "perplexity_std": 58.8202484977183,
+          "n_samples": 3
+        },
+        {
+          "position": 5000,
+          "loss": 5.8784,
+          "perplexity": 360.41,
+          "loss_std": 0.16244165106277392,
+          "perplexity_std": 58.62681638977167,
+          "n_samples": 3
+        },
+        {
+          "position": 6000,
+          "loss": 6.0059000000000005,
+          "perplexity": 408.7033333333333,
+          "loss_std": 0.14521594265093632,
+          "perplexity_std": 60.043870905641434,
+          "n_samples": 3
+        },
+        {
+          "position": 7000,
+          "loss": 6.100133333333333,
+          "perplexity": 450.02,
+          "loss_std": 0.1635178379667898,
+          "perplexity_std": 76.52457905797327,
+          "n_samples": 3
+        },
+        {
+          "position": 8000,
+          "loss": 6.237933333333333,
+          "perplexity": 515.99,
+          "loss_std": 0.15449745413220667,
+          "perplexity_std": 82.58057217045665,
+          "n_samples": 3
+        },
+        {
+          "position": 9000,
+          "loss": 6.414933333333333,
+          "perplexity": 617.1999999999999,
+          "loss_std": 0.17449932187069742,
+          "perplexity_std": 108.97671723813302,
+          "n_samples": 3
+        },
+        {
+          "position": 10000,
+          "loss": 6.618633333333333,
+          "perplexity": 758.34,
+          "loss_std": 0.19303982317991636,
+          "perplexity_std": 147.6570265852594,
+          "n_samples": 3
+        },
+        {
+          "position": 11000,
+          "loss": 6.774666666666667,
+          "perplexity": 886.8433333333334,
+          "loss_std": 0.19734278130535546,
+          "perplexity_std": 175.2693642178613,
+          "n_samples": 3
+        },
+        {
+          "position": 12000,
+          "loss": 6.912466666666667,
+          "perplexity": 1017.72,
+          "loss_std": 0.1971039404307621,
+          "perplexity_std": 197.64133879327983,
+          "n_samples": 3
+        },
+        {
+          "position": 13000,
+          "loss": 7.037566666666667,
+          "perplexity": 1152.0766666666666,
+          "loss_std": 0.18923850911834328,
+          "perplexity_std": 213.18516654151458,
+          "n_samples": 3
+        },
+        {
+          "position": 14000,
+          "loss": 7.1359,
+          "perplexity": 1269.2566666666667,
+          "loss_std": 0.1766315656953765,
+          "perplexity_std": 220.3639649156217,
+          "n_samples": 3
+        },
+        {
+          "position": 15000,
+          "loss": 7.210933333333333,
+          "perplexity": 1366.3733333333334,
+          "loss_std": 0.16520899894779734,
+          "perplexity_std": 221.3020592613935,
+          "n_samples": 3
+        },
+        {
+          "position": 16000,
+          "loss": 7.281766666666667,
+          "perplexity": 1465.43,
+          "loss_std": 0.15726551857712923,
+          "perplexity_std": 225.60992797303936,
+          "n_samples": 3
+        },
+        {
+          "position": 17000,
+          "loss": 7.3463666666666665,
+          "perplexity": 1560.95,
+          "loss_std": 0.1424801155717296,
+          "perplexity_std": 217.49471188973766,
+          "n_samples": 3
+        },
+        {
+          "position": 18000,
+          "loss": 7.4082333333333334,
+          "perplexity": 1659.74,
+          "loss_std": 0.1372636271316378,
+          "perplexity_std": 223.1753474288771,
+          "n_samples": 3
+        },
+        {
+          "position": 19000,
+          "loss": 7.463466666666667,
+          "perplexity": 1752.7566666666667,
+          "loss_std": 0.12910036147638554,
+          "perplexity_std": 221.98867005622898,
+          "n_samples": 3
+        },
+        {
+          "position": 20000,
+          "loss": 7.513066666666667,
+          "perplexity": 1840.7466666666667,
+          "loss_std": 0.12166085374241527,
+          "perplexity_std": 219.7949217642057,
+          "n_samples": 3
+        },
+        {
+          "position": 21000,
+          "loss": 7.5606,
+          "perplexity": 1930.2333333333333,
+          "loss_std": 0.12098723073118094,
+          "perplexity_std": 228.85500875736435,
+          "n_samples": 3
+        },
+        {
+          "position": 22000,
+          "loss": 7.602533333333334,
+          "perplexity": 2012.56,
+          "loss_std": 0.11850326296492121,
+          "perplexity_std": 233.60626254447885,
+          "n_samples": 3
+        },
+        {
+          "position": 23000,
+          "loss": 7.641133333333333,
+          "perplexity": 2091.5499999999997,
+          "loss_std": 0.11731037180630431,
+          "perplexity_std": 241.10168663864624,
+          "n_samples": 3
+        },
+        {
+          "position": 24000,
+          "loss": 7.667933333333333,
+          "perplexity": 2148.1466666666665,
+          "loss_std": 0.11568877790578211,
+          "perplexity_std": 245.74690584691663,
+          "n_samples": 3
+        },
+        {
+          "position": 25000,
+          "loss": 7.689733333333333,
+          "perplexity": 2196.05,
+          "loss_std": 0.1186159488995191,
+          "perplexity_std": 258.29176003117107,
+          "n_samples": 3
+        },
+        {
+          "position": 26000,
+          "loss": 7.7063,
+          "perplexity": 2232.1666666666665,
+          "loss_std": 0.11492206054539747,
+          "perplexity_std": 255.61355232720626,
+          "n_samples": 3
+        },
+        {
+          "position": 27000,
+          "loss": 7.7179,
+          "perplexity": 2255.7366666666667,
+          "loss_std": 0.09975635318113851,
+          "perplexity_std": 224.5987627600236,
+          "n_samples": 3
+        },
+        {
+          "position": 28000,
+          "loss": 7.7306,
+          "perplexity": 2283.476666666667,
+          "loss_std": 0.09215036624995014,
+          "perplexity_std": 210.26316233076437,
+          "n_samples": 3
+        },
+        {
+          "position": 29000,
+          "loss": 7.740633333333333,
+          "perplexity": 2305.54,
+          "loss_std": 0.08524320109740907,
+          "perplexity_std": 196.83848632825845,
+          "n_samples": 3
+        },
+        {
+          "position": 30000,
+          "loss": 7.7447,
+          "perplexity": 2314.7333333333336,
+          "loss_std": 0.08403737263860664,
+          "perplexity_std": 196.49578655363933,
+          "n_samples": 3
+        },
+        {
+          "position": 31000,
+          "loss": 7.745333333333333,
+          "perplexity": 2316.0,
+          "loss_std": 0.08188835896104754,
+          "perplexity_std": 191.96967755351363,
+          "n_samples": 3
+        },
+        {
+          "position": 32000,
+          "loss": 7.743833333333333,
+          "perplexity": 2311.9900000000002,
+          "loss_std": 0.07776659522785687,
+          "perplexity_std": 181.87530975918645,
+          "n_samples": 3
+        },
+        {
+          "position": 33000,
+          "loss": 7.740766666666667,
+          "perplexity": 2305.5833333333335,
+          "loss_std": 0.0830551824592138,
+          "perplexity_std": 193.66547196992389,
+          "n_samples": 3
+        },
+        {
+          "position": 34000,
+          "loss": 7.7466,
+          "perplexity": 2318.69,
+          "loss_std": 0.08040640521749512,
+          "perplexity_std": 188.8310644465046,
+          "n_samples": 3
+        },
+        {
+          "position": 35000,
+          "loss": 7.751266666666667,
+          "perplexity": 2329.5,
+          "loss_std": 0.0801219279182258,
+          "perplexity_std": 188.45638991554515,
+          "n_samples": 3
+        },
+        {
+          "position": 36000,
+          "loss": 7.757366666666667,
+          "perplexity": 2343.9933333333333,
+          "loss_std": 0.08158555836257621,
+          "perplexity_std": 192.5787592994964,
+          "n_samples": 3
+        },
+        {
+          "position": 37000,
+          "loss": 7.7642,
+          "perplexity": 2360.2466666666664,
+          "loss_std": 0.08320360569110011,
+          "perplexity_std": 197.43284284367007,
+          "n_samples": 3
+        },
+        {
+          "position": 38000,
+          "loss": 7.771233333333333,
+          "perplexity": 2376.8733333333334,
+          "loss_std": 0.0831143990734055,
+          "perplexity_std": 198.32193432228658,
+          "n_samples": 3
+        },
+        {
+          "position": 39000,
+          "loss": 7.776233333333334,
+          "perplexity": 2388.5233333333335,
+          "loss_std": 0.08047324607180525,
+          "perplexity_std": 192.3739421889913,
+          "n_samples": 3
+        },
+        {
+          "position": 40000,
+          "loss": 7.784,
+          "perplexity": 2407.1033333333335,
+          "loss_std": 0.08126038395183702,
+          "perplexity_std": 195.204755406556,
+          "n_samples": 3
+        },
+        {
+          "position": 41000,
+          "loss": 7.791766666666667,
+          "perplexity": 2426.0733333333333,
+          "loss_std": 0.08222483404260118,
+          "perplexity_std": 198.89507292372357,
+          "n_samples": 3
+        },
+        {
+          "position": 42000,
+          "loss": 7.7985,
+          "perplexity": 2444.9300000000003,
+          "loss_std": 0.11455129855222064,
+          "perplexity_std": 279.4910263317946,
+          "n_samples": 2
+        },
+        {
+          "position": 43000,
+          "loss": 7.80505,
+          "perplexity": 2461.065,
+          "loss_std": 0.11504627329905133,
+          "perplexity_std": 282.4962301518378,
+          "n_samples": 2
+        },
+        {
+          "position": 44000,
+          "loss": 7.8915,
+          "perplexity": 2674.55,
+          "loss_std": 0,
+          "perplexity_std": 0,
+          "n_samples": 1
+        }
+      ],
+      "librilight_progression_median": [
+        {
+          "position": 1000,
+          "loss": 5.7418,
+          "perplexity": 311.63,
+          "n_samples": 3
+        },
+        {
+          "position": 2000,
+          "loss": 5.6693,
+          "perplexity": 289.83,
+          "n_samples": 3
+        },
+        {
+          "position": 3000,
+          "loss": 5.7004,
+          "perplexity": 298.98,
+          "n_samples": 3
+        },
+        {
+          "position": 4000,
+          "loss": 5.7159,
+          "perplexity": 303.67,
+          "n_samples": 3
+        },
+        {
+          "position": 5000,
+          "loss": 5.8721,
+          "perplexity": 355.01,
+          "n_samples": 3
+        },
+        {
+          "position": 6000,
+          "loss": 5.9861,
+          "perplexity": 397.86,
+          "n_samples": 3
+        },
+        {
+          "position": 7000,
+          "loss": 6.0243,
+          "perplexity": 413.34,
+          "n_samples": 3
+        },
+        {
+          "position": 8000,
+          "loss": 6.173,
+          "perplexity": 479.64,
+          "n_samples": 3
+        },
+        {
+          "position": 9000,
+          "loss": 6.3934,
+          "perplexity": 597.92,
+          "n_samples": 3
+        },
+        {
+          "position": 10000,
+          "loss": 6.6005,
+          "perplexity": 735.49,
+          "n_samples": 3
+        },
+        {
+          "position": 11000,
+          "loss": 6.766,
+          "perplexity": 867.84,
+          "n_samples": 3
+        },
+        {
+          "position": 12000,
+          "loss": 6.9261,
+          "perplexity": 1018.56,
+          "n_samples": 3
+        },
+        {
+          "position": 13000,
+          "loss": 7.0615,
+          "perplexity": 1166.18,
+          "n_samples": 3
+        },
+        {
+          "position": 14000,
+          "loss": 7.1538,
+          "perplexity": 1278.92,
+          "n_samples": 3
+        },
+        {
+          "position": 15000,
+          "loss": 7.233,
+          "perplexity": 1384.33,
+          "n_samples": 3
+        },
+        {
+          "position": 16000,
+          "loss": 7.3065,
+          "perplexity": 1489.93,
+          "n_samples": 3
+        },
+        {
+          "position": 17000,
+          "loss": 7.3737,
+          "perplexity": 1593.59,
+          "n_samples": 3
+        },
+        {
+          "position": 18000,
+          "loss": 7.4332,
+          "perplexity": 1691.21,
+          "n_samples": 3
+        },
+        {
+          "position": 19000,
+          "loss": 7.4865,
+          "perplexity": 1783.75,
+          "n_samples": 3
+        },
+        {
+          "position": 20000,
+          "loss": 7.5362,
+          "perplexity": 1874.65,
+          "n_samples": 3
+        },
+        {
+          "position": 21000,
+          "loss": 7.5855,
+          "perplexity": 1969.38,
+          "n_samples": 3
+        },
+        {
+          "position": 22000,
+          "loss": 7.6285,
+          "perplexity": 2055.98,
+          "n_samples": 3
+        },
+        {
+          "position": 23000,
+          "loss": 7.6628,
+          "perplexity": 2127.66,
+          "n_samples": 3
+        },
+        {
+          "position": 24000,
+          "loss": 7.6802,
+          "perplexity": 2165.06,
+          "n_samples": 3
+        },
+        {
+          "position": 25000,
+          "loss": 7.6989,
+          "perplexity": 2205.93,
+          "n_samples": 3
+        },
+        {
+          "position": 26000,
+          "loss": 7.7089,
+          "perplexity": 2228.16,
+          "n_samples": 3
+        },
+        {
+          "position": 27000,
+          "loss": 7.7192,
+          "perplexity": 2251.24,
+          "n_samples": 3
+        },
+        {
+          "position": 28000,
+          "loss": 7.7303,
+          "perplexity": 2276.25,
+          "n_samples": 3
+        },
+        {
+          "position": 29000,
+          "loss": 7.7375,
+          "perplexity": 2292.82,
+          "n_samples": 3
+        },
+        {
+          "position": 30000,
+          "loss": 7.7295,
+          "perplexity": 2274.36,
+          "n_samples": 3
+        },
+        {
+          "position": 31000,
+          "loss": 7.7268,
+          "perplexity": 2268.34,
+          "n_samples": 3
+        },
+        {
+          "position": 32000,
+          "loss": 7.7259,
+          "perplexity": 2266.28,
+          "n_samples": 3
+        },
+        {
+          "position": 33000,
+          "loss": 7.7232,
+          "perplexity": 2260.17,
+          "n_samples": 3
+        },
+        {
+          "position": 34000,
+          "loss": 7.7273,
+          "perplexity": 2269.36,
+          "n_samples": 3
+        },
+        {
+          "position": 35000,
+          "loss": 7.7369,
+          "perplexity": 2291.3,
+          "n_samples": 3
+        },
+        {
+          "position": 36000,
+          "loss": 7.7461,
+          "perplexity": 2312.6,
+          "n_samples": 3
+        },
+        {
+          "position": 37000,
+          "loss": 7.756,
+          "perplexity": 2335.54,
+          "n_samples": 3
+        },
+        {
+          "position": 38000,
+          "loss": 7.7652,
+          "perplexity": 2357.15,
+          "n_samples": 3
+        },
+        {
+          "position": 39000,
+          "loss": 7.774,
+          "perplexity": 2378.05,
+          "n_samples": 3
+        },
+        {
+          "position": 40000,
+          "loss": 7.7855,
+          "perplexity": 2405.53,
+          "n_samples": 3
+        },
+        {
+          "position": 41000,
+          "loss": 7.7941,
+          "perplexity": 2426.27,
+          "n_samples": 3
+        },
+        {
+          "position": 42000,
+          "loss": 7.798500000000001,
+          "perplexity": 2444.9300000000003,
+          "n_samples": 2
+        },
+        {
+          "position": 43000,
+          "loss": 7.80505,
+          "perplexity": 2461.065,
+          "n_samples": 2
+        },
+        {
+          "position": 44000,
+          "loss": 7.8915,
+          "perplexity": 2674.55,
+          "n_samples": 1
+        }
+      ],
+      "librilight_progression_individual": [
+        [
+          {
+            "position": 1000,
+            "loss": 5.4818,
+            "perplexity": 240.27
+          },
+          {
+            "position": 2000,
+            "loss": 5.3958,
+            "perplexity": 220.48
+          },
+          {
+            "position": 3000,
+            "loss": 5.4079,
+            "perplexity": 223.15
+          },
+          {
+            "position": 4000,
+            "loss": 5.5426,
+            "perplexity": 255.34
+          },
+          {
+            "position": 5000,
+            "loss": 5.7192,
+            "perplexity": 304.67
+          },
+          {
+            "position": 6000,
+            "loss": 5.8716,
+            "perplexity": 354.82
+          },
+          {
+            "position": 7000,
+            "loss": 5.9883,
+            "perplexity": 398.74
+          },
+          {
+            "position": 8000,
+            "loss": 6.1265,
+            "perplexity": 457.82
+          },
+          {
+            "position": 9000,
+            "loss": 6.2522,
+            "perplexity": 519.15
+          },
+          {
+            "position": 10000,
+            "loss": 6.4353,
+            "perplexity": 623.44
+          },
+          {
+            "position": 11000,
+            "loss": 6.5818,
+            "perplexity": 721.85
+          },
+          {
+            "position": 12000,
+            "loss": 6.7089,
+            "perplexity": 819.66
+          },
+          {
+            "position": 13000,
+            "loss": 6.8375,
+            "perplexity": 932.19
+          },
+          {
+            "position": 14000,
+            "loss": 6.951,
+            "perplexity": 1044.22
+          },
+          {
+            "position": 15000,
+            "loss": 7.0358,
+            "perplexity": 1136.64
+          },
+          {
+            "position": 16000,
+            "loss": 7.1136,
+            "perplexity": 1228.57
+          },
+          {
+            "position": 17000,
+            "loss": 7.1922,
+            "perplexity": 1328.98
+          },
+          {
+            "position": 18000,
+            "loss": 7.2602,
+            "perplexity": 1422.5
+          },
+          {
+            "position": 19000,
+            "loss": 7.3244,
+            "perplexity": 1516.9
+          },
+          {
+            "position": 20000,
+            "loss": 7.3815,
+            "perplexity": 1605.97
+          },
+          {
+            "position": 21000,
+            "loss": 7.4291,
+            "perplexity": 1684.33
+          },
+          {
+            "position": 22000,
+            "loss": 7.4732,
+            "perplexity": 1760.29
+          },
+          {
+            "position": 23000,
+            "loss": 7.5145,
+            "perplexity": 1834.43
+          },
+          {
+            "position": 24000,
+            "loss": 7.5466,
+            "perplexity": 1894.38
+          },
+          {
+            "position": 25000,
+            "loss": 7.5668,
+            "perplexity": 1932.96
+          },
+          {
+            "position": 26000,
+            "loss": 7.5901,
+            "perplexity": 1978.58
+          },
+          {
+            "position": 27000,
+            "loss": 7.6175,
+            "perplexity": 2033.42
+          },
+          {
+            "position": 28000,
+            "loss": 7.6386,
+            "perplexity": 2076.92
+          },
+          {
+            "position": 29000,
+            "loss": 7.657,
+            "perplexity": 2115.37
+          },
+          {
+            "position": 30000,
+            "loss": 7.6693,
+            "perplexity": 2141.56
+          },
+          {
+            "position": 31000,
+            "loss": 7.6743,
+            "perplexity": 2152.35
+          },
+          {
+            "position": 32000,
+            "loss": 7.6766,
+            "perplexity": 2157.33
+          },
+          {
+            "position": 33000,
+            "loss": 7.6679,
+            "perplexity": 2138.66
+          },
+          {
+            "position": 34000,
+            "loss": 7.6776,
+            "perplexity": 2159.42
+          },
+          {
+            "position": 35000,
+            "loss": 7.6793,
+            "perplexity": 2163.07
+          },
+          {
+            "position": 36000,
+            "loss": 7.682,
+            "perplexity": 2169.04
+          },
+          {
+            "position": 37000,
+            "loss": 7.6854,
+            "perplexity": 2176.33
+          },
+          {
+            "position": 38000,
+            "loss": 7.6913,
+            "perplexity": 2189.15
+          },
+          {
+            "position": 39000,
+            "loss": 7.6969,
+            "perplexity": 2201.6
+          },
+          {
+            "position": 40000,
+            "loss": 7.702,
+            "perplexity": 2212.69
+          },
+          {
+            "position": 41000,
+            "loss": 7.7084,
+            "perplexity": 2227.08
+          },
+          {
+            "position": 42000,
+            "loss": 7.7175,
+            "perplexity": 2247.3
+          },
+          {
+            "position": 43000,
+            "loss": 7.7237,
+            "perplexity": 2261.31
+          },
+          {
+            "position": 44000,
+            "loss": 7.8915,
+            "perplexity": 2674.55
+          }
+        ],
+        [
+          {
+            "position": 1000,
+            "loss": 5.7418,
+            "perplexity": 311.63
+          },
+          {
+            "position": 2000,
+            "loss": 5.6693,
+            "perplexity": 289.83
+          },
+          {
+            "position": 3000,
+            "loss": 5.7004,
+            "perplexity": 298.98
+          },
+          {
+            "position": 4000,
+            "loss": 5.7159,
+            "perplexity": 303.67
+          },
+          {
+            "position": 5000,
+            "loss": 5.8721,
+            "perplexity": 355.01
+          },
+          {
+            "position": 6000,
+            "loss": 5.9861,
+            "perplexity": 397.86
+          },
+          {
+            "position": 7000,
+            "loss": 6.0243,
+            "perplexity": 413.34
+          },
+          {
+            "position": 8000,
+            "loss": 6.173,
+            "perplexity": 479.64
+          },
+          {
+            "position": 9000,
+            "loss": 6.3934,
+            "perplexity": 597.92
+          },
+          {
+            "position": 10000,
+            "loss": 6.6005,
+            "perplexity": 735.49
+          },
+          {
+            "position": 11000,
+            "loss": 6.766,
+            "perplexity": 867.84
+          },
+          {
+            "position": 12000,
+            "loss": 6.9261,
+            "perplexity": 1018.56
+          },
+          {
+            "position": 13000,
+            "loss": 7.0615,
+            "perplexity": 1166.18
+          },
+          {
+            "position": 14000,
+            "loss": 7.1538,
+            "perplexity": 1278.92
+          },
+          {
+            "position": 15000,
+            "loss": 7.233,
+            "perplexity": 1384.33
+          },
+          {
+            "position": 16000,
+            "loss": 7.3065,
+            "perplexity": 1489.93
+          },
+          {
+            "position": 17000,
+            "loss": 7.3737,
+            "perplexity": 1593.59
+          },
+          {
+            "position": 18000,
+            "loss": 7.4332,
+            "perplexity": 1691.21
+          },
+          {
+            "position": 19000,
+            "loss": 7.4865,
+            "perplexity": 1783.75
+          },
+          {
+            "position": 20000,
+            "loss": 7.5362,
+            "perplexity": 1874.65
+          },
+          {
+            "position": 21000,
+            "loss": 7.5855,
+            "perplexity": 1969.38
+          },
+          {
+            "position": 22000,
+            "loss": 7.6285,
+            "perplexity": 2055.98
+          },
+          {
+            "position": 23000,
+            "loss": 7.6628,
+            "perplexity": 2127.66
+          },
+          {
+            "position": 24000,
+            "loss": 7.6802,
+            "perplexity": 2165.06
+          },
+          {
+            "position": 25000,
+            "loss": 7.6989,
+            "perplexity": 2205.93
+          },
+          {
+            "position": 26000,
+            "loss": 7.7089,
+            "perplexity": 2228.16
+          },
+          {
+            "position": 27000,
+            "loss": 7.7192,
+            "perplexity": 2251.24
+          },
+          {
+            "position": 28000,
+            "loss": 7.7303,
+            "perplexity": 2276.25
+          },
+          {
+            "position": 29000,
+            "loss": 7.7375,
+            "perplexity": 2292.82
+          },
+          {
+            "position": 30000,
+            "loss": 7.7295,
+            "perplexity": 2274.36
+          },
+          {
+            "position": 31000,
+            "loss": 7.7268,
+            "perplexity": 2268.34
+          },
+          {
+            "position": 32000,
+            "loss": 7.7259,
+            "perplexity": 2266.28
+          },
+          {
+            "position": 33000,
+            "loss": 7.7232,
+            "perplexity": 2260.17
+          },
+          {
+            "position": 34000,
+            "loss": 7.7273,
+            "perplexity": 2269.36
+          },
+          {
+            "position": 35000,
+            "loss": 7.7369,
+            "perplexity": 2291.3
+          },
+          {
+            "position": 36000,
+            "loss": 7.7461,
+            "perplexity": 2312.6
+          },
+          {
+            "position": 37000,
+            "loss": 7.756,
+            "perplexity": 2335.54
+          },
+          {
+            "position": 38000,
+            "loss": 7.7652,
+            "perplexity": 2357.15
+          },
+          {
+            "position": 39000,
+            "loss": 7.774,
+            "perplexity": 2378.05
+          },
+          {
+            "position": 40000,
+            "loss": 7.7855,
+            "perplexity": 2405.53
+          },
+          {
+            "position": 41000,
+            "loss": 7.7941,
+            "perplexity": 2426.27
+          },
+          {
+            "position": 42000,
+            "loss": 7.8795,
+            "perplexity": 2642.56
+          },
+          {
+            "position": 43000,
+            "loss": 7.8864,
+            "perplexity": 2660.82
+          }
+        ],
+        [
+          {
+            "position": 1000,
+            "loss": 5.8059,
+            "perplexity": 332.25
+          },
+          {
+            "position": 2000,
+            "loss": 5.8284,
+            "perplexity": 339.8
+          },
+          {
+            "position": 3000,
+            "loss": 5.7991,
+            "perplexity": 330.02
+          },
+          {
+            "position": 4000,
+            "loss": 5.92,
+            "perplexity": 372.39
+          },
+          {
+            "position": 5000,
+            "loss": 6.0439,
+            "perplexity": 421.55
+          },
+          {
+            "position": 6000,
+            "loss": 6.16,
+            "perplexity": 473.43
+          },
+          {
+            "position": 7000,
+            "loss": 6.2878,
+            "perplexity": 537.98
+          },
+          {
+            "position": 8000,
+            "loss": 6.4143,
+            "perplexity": 610.51
+          },
+          {
+            "position": 9000,
+            "loss": 6.5992,
+            "perplexity": 734.53
+          },
+          {
+            "position": 10000,
+            "loss": 6.8201,
+            "perplexity": 916.09
+          },
+          {
+            "position": 11000,
+            "loss": 6.9762,
+            "perplexity": 1070.84
+          },
+          {
+            "position": 12000,
+            "loss": 7.1024,
+            "perplexity": 1214.94
+          },
+          {
+            "position": 13000,
+            "loss": 7.2137,
+            "perplexity": 1357.86
+          },
+          {
+            "position": 14000,
+            "loss": 7.3029,
+            "perplexity": 1484.63
+          },
+          {
+            "position": 15000,
+            "loss": 7.364,
+            "perplexity": 1578.15
+          },
+          {
+            "position": 16000,
+            "loss": 7.4252,
+            "perplexity": 1677.79
+          },
+          {
+            "position": 17000,
+            "loss": 7.4732,
+            "perplexity": 1760.28
+          },
+          {
+            "position": 18000,
+            "loss": 7.5313,
+            "perplexity": 1865.51
+          },
+          {
+            "position": 19000,
+            "loss": 7.5795,
+            "perplexity": 1957.62
+          },
+          {
+            "position": 20000,
+            "loss": 7.6215,
+            "perplexity": 2041.62
+          },
+          {
+            "position": 21000,
+            "loss": 7.6672,
+            "perplexity": 2136.99
+          },
+          {
+            "position": 22000,
+            "loss": 7.7059,
+            "perplexity": 2221.41
+          },
+          {
+            "position": 23000,
+            "loss": 7.7461,
+            "perplexity": 2312.56
+          },
+          {
+            "position": 24000,
+            "loss": 7.777,
+            "perplexity": 2385.0
+          },
+          {
+            "position": 25000,
+            "loss": 7.8035,
+            "perplexity": 2449.26
+          },
+          {
+            "position": 26000,
+            "loss": 7.8199,
+            "perplexity": 2489.76
+          },
+          {
+            "position": 27000,
+            "loss": 7.817,
+            "perplexity": 2482.55
+          },
+          {
+            "position": 28000,
+            "loss": 7.8229,
+            "perplexity": 2497.26
+          },
+          {
+            "position": 29000,
+            "loss": 7.8274,
+            "perplexity": 2508.43
+          },
+          {
+            "position": 30000,
+            "loss": 7.8353,
+            "perplexity": 2528.28
+          },
+          {
+            "position": 31000,
+            "loss": 7.8349,
+            "perplexity": 2527.31
+          },
+          {
+            "position": 32000,
+            "loss": 7.829,
+            "perplexity": 2512.36
+          },
+          {
+            "position": 33000,
+            "loss": 7.8312,
+            "perplexity": 2517.92
+          },
+          {
+            "position": 34000,
+            "loss": 7.8349,
+            "perplexity": 2527.29
+          },
+          {
+            "position": 35000,
+            "loss": 7.8376,
+            "perplexity": 2534.13
+          },
+          {
+            "position": 36000,
+            "loss": 7.844,
+            "perplexity": 2550.34
+          },
+          {
+            "position": 37000,
+            "loss": 7.8512,
+            "perplexity": 2568.87
+          },
+          {
+            "position": 38000,
+            "loss": 7.8572,
+            "perplexity": 2584.32
+          },
+          {
+            "position": 39000,
+            "loss": 7.8578,
+            "perplexity": 2585.92
+          },
+          {
+            "position": 40000,
+            "loss": 7.8645,
+            "perplexity": 2603.09
+          },
+          {
+            "position": 41000,
+            "loss": 7.8728,
+            "perplexity": 2624.87
+          }
+        ]
+      ],
+      "tags": [
+        "ttt",
+        "ttt-layers-29-30-31",
+        "high-lr",
+        "daily-talk",
+        "short-training"
+      ],
+      "notes": "TTT training on layers 29,30,31 | Base LR: 0.01 | Gating alpha: 0.001 | Data: seamless_interaction | Trained for 200 steps"
+    },
+    {
+      "id": "baseline_pretrained",
+      "name": "Baseline - kyutai/moshiko-pytorch-bf16",
+      "checkpoint_path": "/home/alufr/ttt_tests/moshi-finetune",
+      "checkpoint_step": 0,
+      "evaluation_timestamp": "2025-10-19T14:32:51.430929",
+      "training_config": {
+        "baseline": true,
+        "model": "kyutai/moshiko-pytorch-bf16",
+        "ttt": {
+          "enable": false
+        },
+        "lora": {
+          "enable": false
+        }
+      },
+      "metrics": {
+        "sblimp_accuracy": 0.545,
+        "sblimp_samples": 1000,
+        "swuggy_accuracy": 0.6335,
+        "swuggy_samples": 2000,
+        "tstory_accuracy": 0.8006413682522715,
+        "tstory_samples": 1871,
+        "sstory_accuracy": 0.6092998396579369,
+        "sstory_samples": 1871,
+        "librilight_perplexity_8k": 47592.50476402982,
+        "librilight_perplexity_16k": 13789.582062289292,
+        "librilight_perplexity_24k": 1297.0412106574258,
+        "librilight_slope": 1.7631071314174487e-05,
+        "librilight_samples": 129574,
+        "paper_metrics_avg": 0.6471103019775521
+      },
+      "librilight_progression": [],
+      "librilight_progression_mean": [],
+      "librilight_progression_median": [],
+      "librilight_progression_individual": [],
+      "tags": [
+        "baseline",
+        "short-training"
+      ],
+      "notes": "Trained for 0 steps"
+    }
+  ]
+}

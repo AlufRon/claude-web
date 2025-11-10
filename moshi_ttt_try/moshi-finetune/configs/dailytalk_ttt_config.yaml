@@ -1,0 +1,76 @@
+# TTT-Moshi Training Configuration for DailyTalk Dataset
+# Based on the real data: /sise/eliyanac-group/ron_al/daily-talk-contiguous/
+
+# Data configuration
+data:
+  train_data: /sise/eliyanac-group/ron_al/daily-talk-contiguous/train/dailytalk_train.jsonl
+  eval_data: /sise/eliyanac-group/ron_al/daily-talk-contiguous/eval/dailytalk_eval.jsonl
+  shuffle: true
+
+# Training run configuration
+run_dir: runs/dailytalk_ttt_experiment
+overwrite_run_dir: true
+
+# Model paths
+moshi_paths:
+  hf_repo_id: kyutai/moshiko-pytorch-bf16
+  moshi_path: null
+  mimi_path: null
+  tokenizer_path: null
+  config_path: null
+
+# LoRA configuration (recommended for TTT fine-tuning)
+lora:
+  enable: false
+  rank: 64
+  scaling: 2.0
+  ft_embed: false
+
+# TTT (Test-Time Training) configuration
+ttt:
+  enable: true
+  layers: "middle"  # "all", "middle", "none", or comma-separated indices like "1,3,5"
+  base_lr: 1.0
+  mini_batch_size: 16
+
+# Training parameters
+full_finetuning: false  # Use LoRA for efficiency with TTT
+duration_sec: 15.0      # Audio segment duration
+batch_size: 1           # Small batch size for TTT training
+num_microbatches: 4     # Gradient accumulation
+max_steps: 50           # Mini training run for validation
+log_freq: 1             # Log every step for detailed monitoring
+
+# Loss weighting
+first_codebook_weight_multiplier: 2.0
+text_padding_weight: 0.5
+
+# Optimizer configuration  
+optim:
+  lr: 5e-5              # Lower learning rate for TTT stability
+  weight_decay: 0.1
+  pct_start: 0.05
+
+# Regularization
+max_norm: 1.0           # Gradient clipping for TTT stability
+
+# Checkpointing
+do_ckpt: true
+ckpt_freq: 10           # Checkpoint every 10 steps
+save_adapters: true
+num_ckpt_keep: 3
+
+# Evaluation
+do_eval: true
+eval_freq: 10           # Evaluate every 10 steps
+
+# System configuration
+seed: 42
+gradient_checkpointing: true  # Memory efficiency
+param_dtype: bfloat16        # Mixed precision
+
+# Monitoring
+wandb:
+  project: ttt-moshi-dailytalk
+  offline: false
+  run_name: dailytalk_ttt_middle_layers

@@ -1,0 +1,96 @@
+# TTT Training Config - MINIMAL for 48GB GPU
+# Only 4 final layers to ensure memory fit
+
+# Data configuration
+data:
+  train_data: /sise/eliyanac-group/ron_al/daily-talk-contiguous/train/dailytalk_train.jsonl
+  eval_data: /sise/eliyanac-group/ron_al/daily-talk-contiguous/eval/dailytalk_eval.jsonl
+  shuffle: true
+
+# Training run configuration
+run_dir: runs/ttt_minimal_4layers
+overwrite_run_dir: true
+
+# Model paths
+moshi_paths:
+  hf_repo_id: kyutai/moshiko-pytorch-bf16
+  moshi_path: null
+  mimi_path: null
+  tokenizer_path: null
+  config_path: null
+
+# LoRA configuration (disabled for TTT-only training)
+lora:
+  enable: false
+  rank: 32
+  scaling: 2.0
+  ft_embed: false
+
+# TTT (Test-Time Training) configuration - MINIMAL MEMORY
+ttt:
+  enable: true
+  layers: "28,29,30,31"  # Only final 4 layers (~17M parameters)
+  base_lr: 0.1  # Video-DiT exact value
+  mini_batch_size: 4    # Smaller mini-batch
+
+# Training parameters - MAXIMUM MEMORY OPTIMIZATION
+full_finetuning: false
+duration_sec: 15.0
+batch_size: 1          # Single sample
+num_microbatches: 1    # No gradient accumulation
+max_steps: 1000
+log_freq: 20
+
+# Loss weighting
+first_codebook_weight_multiplier: 2.0
+text_padding_weight: 0.5
+
+# Optimizer configuration
+optim:
+  lr: 3e-5
+  weight_decay: 0.1
+  pct_start: 0.05
+
+# Regularization
+max_norm: 1.0
+
+# Checkpointing (reduced frequency)
+do_ckpt: true
+ckpt_freq: 200
+save_adapters: true
+num_ckpt_keep: 2
+
+# Evaluation (reduced frequency)
+do_eval: true
+eval_freq: 100
+
+# Paper metrics evaluation (minimal)
+paper_metrics:
+  paper_metrics_eval: true
+  paper_metrics_freq: 100
+  paper_metrics_use_silence: true
+  sblimp_audio_dir: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/
+  sblimp_gold_csv: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/gold.csv
+  sblimp_max_pairs: 200  # Very small for memory
+  sblimp_stream_config: moshi_silence
+  sstory_audio_dir: /sise/eliyanac-group/ron_al/sSC/sSC/
+  sstory_max_pairs: 200
+  sstory_stream_config: moshi_silence
+  swuggy_audio_dir: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/
+  swuggy_gold_csv: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/gold.csv
+  swuggy_max_pairs: 200
+  swuggy_stream_config: moshi_silence
+  tstory_audio_dir: /sise/eliyanac-group/ron_al/tSC/tSC/
+  tstory_max_pairs: 200
+  tstory_stream_config: moshi_silence
+
+# System configuration
+seed: 42
+gradient_checkpointing: true  # Essential for memory
+param_dtype: bfloat16
+
+# Monitoring
+wandb:
+  project: ttt-moshi-minimal
+  offline: false
+  run_name: ttt_minimal_4layers

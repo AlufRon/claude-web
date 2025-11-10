@@ -1,0 +1,77 @@
+# Frozen Baseline Configuration
+# All weights frozen - no LoRA, no TTT, no training
+# Useful for testing training pipeline, data loading, evaluation
+
+# data
+data:
+  train_data: /sise/eliyanac-group/ron_al/daily-talk-contiguous/train/dailytalk_train.jsonl
+  eval_data: /sise/eliyanac-group/ron_al/daily-talk-contiguous/eval/dailytalk_eval.jsonl
+  shuffle: true
+
+# TTT disabled
+ttt:
+  enable: false
+  layers: "none"
+  base_lr: 0.1
+  mini_batch_size: 16
+
+# model
+moshi_paths: 
+  hf_repo_id: "kyutai/moshiko-pytorch-bf16"
+
+# Fully frozen - no LoRA, no TTT, no training
+full_finetuning: false
+lora:
+  enable: false  # Completely disabled
+  rank: 1
+  scaling: 0.0
+  ft_embed: false
+
+# Paper metrics evaluation
+paper_metrics:
+  paper_metrics_eval: true
+  paper_metrics_freq: 5
+  paper_metrics_use_silence: true
+  sblimp_audio_dir: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/
+  sblimp_gold_csv: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/gold.csv
+  sblimp_max_pairs: 100  # Small for quick testing
+  sblimp_stream_config: moshi_silence
+  sstory_audio_dir: /sise/eliyanac-group/ron_al/sSC/sSC/
+  sstory_max_pairs: 100
+  sstory_stream_config: moshi_silence
+  swuggy_audio_dir: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/
+  swuggy_gold_csv: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/gold.csv
+  swuggy_max_pairs: 100
+  swuggy_stream_config: moshi_silence
+  tstory_audio_dir: /sise/eliyanac-group/ron_al/tSC/tSC/
+  tstory_max_pairs: 100
+  tstory_stream_config: moshi_silence
+
+# Loss weighting
+first_codebook_weight_multiplier: 100.
+text_padding_weight: .5
+
+# Training parameters - minimal for testing
+duration_sec: 10  # Very short for testing
+batch_size: 1
+max_steps: 10      # Just a few steps
+gradient_checkpointing: true
+optim:
+  lr: 2e-6        # Learning rate (but no gradients will be computed)
+  weight_decay: 0.1
+  pct_start: 0.05
+
+# Logging
+seed: 0
+log_freq: 1
+eval_freq: 100
+do_eval: false
+do_ckpt: false     # No checkpointing needed
+save_adapters: false
+
+run_dir: "/sise/eliyanac-group/ron_al/moshi_frozen_test/"
+
+wandb:
+  project: moshi-frozen-baseline
+  offline: false
+  run_name: frozen_baseline_test

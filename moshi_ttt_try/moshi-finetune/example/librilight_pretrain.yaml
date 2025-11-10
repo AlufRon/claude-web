@@ -1,0 +1,98 @@
+# LibriLight Pre-training Configuration
+# Purpose: Initial TTT pre-training on 60K hours of audio-only data
+# Dataset: LibriLight (mono audio, no text transcripts)
+# Duration: ~24-48 hours on 4 GPUs
+
+run_dir: /sise/eliyanac-group/ron_al/librilight_ttt_pretrain
+
+# Data configuration
+data:
+  train_data: /sise/eliyanac-group/ron_al/librilight/extracted_medium/medium/librilight.jsonl
+  eval_data: ""
+  shuffle: false
+
+duration_sec: 60  # Long sequences for TTT advantage
+
+# Model paths - start from base Moshi model
+moshi_paths:
+  hf_repo_id: kyutai/moshiko-pytorch-bf16
+  mimi_path: null
+  moshi_path: null
+  tokenizer_path: null
+  config_path: null
+
+# Training hyperparameters
+batch_size: 4
+num_microbatches: 1
+max_steps: 10000
+log_freq: 10
+ckpt_freq: 1000
+num_ckpt_keep: 3
+do_ckpt: true
+do_eval: false
+seed: 42
+
+# Text weighting (CRITICAL for LibriLight audio-only training)
+first_codebook_weight_multiplier: 100.0  # Standard Moshi weighting for first audio codebook
+text_padding_weight: 0.5  # Standard weight for text padding (even for audio-only)
+
+# Optimizer settings
+optim:
+  lr: 1e-4
+  weight_decay: 0.1
+  pct_start: 0.05
+
+# LoRA configuration (freeze base model, train only adapters + TTT)
+lora:
+  enable: true
+  rank: 64
+  scaling: 2.0
+  ft_embed: false
+
+full_finetuning: false
+save_adapters: true
+
+# TTT Configuration (CRITICAL - enables TTT layers)
+ttt:
+  enable: true
+  layers: middle  # TTT in middle layers for balance
+  base_lr: 1.0
+  mini_batch_size: 64
+  persistent_states: true
+  initial_gating_alpha: 0.0001
+
+  # TTT-MLP Architecture (5-layer for expressiveness)
+  ttt_mlp_layers: 5
+  ttt_mlp_hidden_dims: null  # Auto-calculate from expansion_factor
+  ttt_mlp_expansion_factor: 4.0
+
+  # Inner loop diagnostics (optional)
+  log_inner_loop_losses: false
+  inner_loop_log_interval: 10
+  save_inner_loop_plots: false
+  inner_loop_plot_dir: ./evaluation_plots/inner_loop
+
+  # LibriLight evaluation settings (TTT-optimized chunking)
+  optimize_chunk_size: true
+  chunk_size: null  # Auto-calculate from mini_batch_size
+  max_chunk_size: 50
+  prefer_efficiency: true
+
+# Efficiency settings
+gradient_checkpointing: true
+max_norm: 1.0
+
+# Weights & Biases logging
+wandb:
+  project: moshi-ttt-librilight
+  offline: false
+  key: null
+  run_name: librilight_ttt_pretrain_60s
+
+# Checkpoint resuming (not used for initial training)
+resume_from: null
+reset_optimizer: false
+reset_step: false
+
+param_dtype: bfloat16
+overwrite_run_dir: false

@@ -1,0 +1,89 @@
+# Memory-Optimized TTT Configuration
+# Optimized to reduce memory usage from 47GB to ~28-30GB
+# Based on TTT_MEMORY_OPTIMIZATION_PLAN.md
+
+# data
+data:
+  train_data: /sise/eliyanac-group/ron_al/seamless_interaction/daily_format_output/dailytalk.jsonl
+  eval_data: /sise/eliyanac-group/ron_al/seamless_interaction/daily_format_output/dailytalk.jsonl
+  shuffle: false
+
+ttt:
+  enable: true  
+  layers: "27,28,29,31"  # Keep successful layers
+  base_lr: 1.0  # Reduced from 10.0 for stability
+  mini_batch_size: 4  # Increased from 1 for better checkpointing (saves 3-5GB)
+  max_chunk_size: 25  # Limit chunk size to reduce memory peaks
+  persistent_states: true
+  initial_gating_alpha: 0.1
+
+# model
+moshi_paths: 
+  hf_repo_id: "kyutai/moshiko-pytorch-bf16"
+
+full_finetuning: false
+lora:
+  enable: true
+  rank: 64
+  scaling: 2.
+  ft_embed: false
+
+paper_metrics:
+  paper_metrics_eval: true
+  paper_metrics_freq: 2000
+  save_results_json: true
+  results_dir: "./evaluation_results"
+  paper_metrics_use_silence: true
+  paper_metrics_use_user_stream: false
+  sblimp_audio_dir: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/
+  sblimp_gold_csv: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/gold.csv
+  sblimp_max_pairs: 5
+  sstory_audio_dir: /sise/eliyanac-group/ron_al/sSC/sSC/
+  sstory_max_pairs: 5
+  swuggy_audio_dir: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/
+  swuggy_gold_csv: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/gold.csv
+  swuggy_max_pairs: 5
+  tstory_audio_dir: /sise/eliyanac-group/ron_al/tSC/tSC/
+  tstory_max_pairs: 5
+  librilight_evaluation_mode: pre_concatenated
+  librilight_concatenated_dir: /home/alufr/ttt_tests/librilight_1hour_sequences
+  librilight_max_files: 3
+
+first_codebook_weight_multiplier: 100.
+text_padding_weight: .5
+
+# optim - reduced batch size and duration for memory efficiency
+duration_sec: 60  # Reduced from 80 to lower memory pressure
+batch_size: 1  # Keep small batch size
+max_steps: 1000
+gradient_checkpointing: true  # CRITICAL: Enables TTT layer checkpointing (saves 12-15GB)
+optim:
+  lr: 9e-5
+  weight_decay: 0.01
+  pct_start: 0.05
+
+# other
+seed: 42
+log_freq: 10
+eval_freq: 2000
+do_eval: true
+do_ckpt: true
+ckpt_freq: 1000
+
+save_adapters: true
+
+run_dir: /sise/eliyanac-group/ron_al/seamless_moshi_memory_optimized
+
+wandb:
+  project: ttt-moshi-production
+  offline: false
+  run_name: ttt-memory-optimized
+
+# Memory optimization notes:
+# 1. mini_batch_size: 4 (was 1) - Better checkpointing efficiency
+# 2. max_chunk_size: 25 - Limit memory peaks  
+# 3. base_lr: 1.0 (was 10.0) - More stable training
+# 4. duration_sec: 60 (was 80) - Reduce sequence length memory
+# 5. gradient_checkpointing: true - Enables TTT layer checkpointing
+#
+# Expected memory reduction: 47GB → 28-30GB (35% reduction)

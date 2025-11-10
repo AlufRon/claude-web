@@ -1,0 +1,104 @@
+# TEST CONFIG: 5-step test to verify checkpoint fix
+# Based on moshi_7B_multilayer_with_ttt.yaml
+
+# data
+data:
+  train_data: /sise/eliyanac-group/ron_al/seamless_interaction/daily_format_output/dailytalk.jsonl
+  eval_data: /sise/eliyanac-group/ron_al/seamless_interaction/daily_format_output/dailytalk.jsonl
+  shuffle: false
+
+ttt:
+  enable: true
+  layers: "29,30,31"
+  base_lr: 0.5
+  mini_batch_size: 1
+  persistent_states: true
+  initial_gating_alpha: 0.1
+
+  # Disable logging features for faster test
+  log_inner_loop_losses: false
+  save_inner_loop_plots: false
+
+  # Multi-layer TTT-MLP Configuration
+  ttt_mlp_layers: 2
+  ttt_mlp_expansion_factor: 4.0
+
+# model
+moshi_paths:
+  hf_repo_id: "kyutai/moshiko-pytorch-bf16"
+
+full_finetuning: false
+lora:
+  enable: false
+  rank: 128
+  scaling: 2.
+  ft_embed: false
+
+# Enable paper metrics for Figure 5 testing
+paper_metrics:
+  paper_metrics_eval: true
+  paper_metrics_freq: 5  # Eval at step 5
+
+  # JSON results saving
+  save_results_json: true
+  results_dir: "./evaluation_results"
+
+  # Natural silence codes for optimal performance
+  paper_metrics_use_silence: true
+
+  # Cross-stream evaluation (keep disabled for speed)
+  paper_metrics_use_user_stream: false
+
+  # === Figure 5: TTT Loss Trajectories ===
+  ttt_fig5_enable: true
+  ttt_fig5_max_T: 2048
+  ttt_fig5_layers: [29, 30, 31]
+  ttt_fig5_smooth: 10
+
+  # Minimal benchmark configs (fast - only 10 samples each)
+  sblimp_audio_dir: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/
+  sblimp_gold_csv: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/syntactic/test/gold.csv
+  sblimp_max_pairs: 10
+  sstory_audio_dir: /sise/eliyanac-group/ron_al/sSC/sSC/
+  sstory_max_pairs: 10
+  swuggy_audio_dir: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/
+  swuggy_gold_csv: /sise/eliyanac-group/ron_al/sblimp_data/sLM21_dataset/lexical/test/gold.csv
+  swuggy_max_pairs: 10
+  tstory_audio_dir: /sise/eliyanac-group/ron_al/tSC/tSC/
+  tstory_max_pairs: 10
+
+  # === LibriLight Long Context Evaluation (for Figure 5) ===
+  librilight_evaluation_mode: pre_concatenated
+  librilight_concatenated_dir: /home/alufr/ttt_tests/librilight_1hour_sequences
+  librilight_max_files: 1  # Just 1 file for fast test (original uses 3)
+  librilight_max_tokens: 3000  # Limit to 3000 tokens (~24 seconds of audio for fast test)
+
+first_codebook_weight_multiplier: 100.
+text_padding_weight: .5
+
+# optim - SHORT TEST
+duration_sec: 15
+batch_size: 1
+max_steps: 5  # ← ONLY 5 STEPS FOR TESTING
+gradient_checkpointing: false
+optim:
+  lr: 9e-5
+  weight_decay: 0.01
+  pct_start: 0.05
+
+# other
+seed: 42
+log_freq: 1  # Log every step
+eval_freq: 5  # Eval at step 5
+do_eval: true  # Enable eval for paper metrics
+do_ckpt: false  # Disable checkpointing
+ckpt_freq: 100
+
+save_adapters: true
+
+run_dir: /sise/eliyanac-group/ron_al/test_checkpoint_fix_3k_tokens
+
+wandb:
+  project: ttt-moshi-production
+  offline: true  # Offline mode for testing
+  run_name: test-checkpoint-fix-5steps

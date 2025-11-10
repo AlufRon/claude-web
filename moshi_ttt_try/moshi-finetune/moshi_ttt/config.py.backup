@@ -1,0 +1,30 @@
+# Moshi-compatible configuration for TTT layers
+from dataclasses import dataclass
+from typing import Optional
+
+@dataclass
+class TTTConfig:
+    """Configuration for TTT layers in Moshi"""
+    
+    # Model dimensions
+    model_dim: int = 1024
+    num_heads: int = 8 
+    
+    # TTT-specific configs
+    ttt_base_lr: float = 0.1          # Video-DiT exact value
+    mini_batch_size: int = 16
+    scan_checkpoint_group_size: int = 1
+    ssm_layer: str = "ttt_mlp"        # or "ttt_linear"
+    
+    # SSM Gating config (Video-DiT configs.py line 44)
+    gating_alpha_init: float = 0.1   # Video-DiT exact value - use 0.01 for multi-layer
+    
+    # For Video-DiT compatibility (not used in Moshi but needed for imports)
+    rope_theta: float = 10000.0
+    latent_height: int = 32
+    latent_width: int = 32
+    compressed_num_frames: int = 16
+    
+    @property
+    def head_dim(self) -> int:
+        return self.model_dim // self.num_heads

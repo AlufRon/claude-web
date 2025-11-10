@@ -1,0 +1,7 @@
+# Ignore large moshi artifacts
+moshi_ttt_try/moshi-finetune/**/save_checkpoint/
+moshi_ttt_try/moshi-finetune/**/optimizer_state.pt
+moshi_ttt_try/moshi-finetune/**/consolidated/**
+moshi_ttt_try/moshi-finetune/**/logits.pt
+moshi_ttt_try/moshi-finetune/**/lora.safetensors
+moshi_ttt_try/moshi-finetune/**/batch_results/**/combined_*

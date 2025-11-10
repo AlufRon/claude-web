@@ -1,0 +1,76 @@
+# TTT Single Layer - Small Batch Size
+# Reduce batch size to accommodate TTT's higher forward pass memory usage
+
+# Data configuration
+data:
+  train_data: /sise/eliyanac-group/ron_al/daily-talk-contiguous/train/dailytalk_train.jsonl
+  eval_data: /sise/eliyanac-group/ron_al/daily-talk-contiguous/eval/dailytalk_eval.jsonl
+  shuffle: true
+
+# Training run configuration
+run_dir: runs/ttt_single_small_batch
+overwrite_run_dir: true
+
+# Model paths
+moshi_paths:
+  hf_repo_id: kyutai/moshiko-pytorch-bf16
+  moshi_path: null
+  mimi_path: null
+  tokenizer_path: null
+  config_path: null
+
+# LoRA configuration (disabled)
+lora:
+  enable: false
+  rank: 128
+  scaling: 2.0
+  ft_embed: false
+
+# TTT (Test-Time Training) configuration
+ttt:
+  enable: true
+  layers: "31"  # Single final layer
+  base_lr: 0.1
+  mini_batch_size: 2  # Very small TTT mini-batch
+
+# Training parameters - REDUCED BATCH SIZE
+full_finetuning: false
+duration_sec: 100.0
+batch_size: 1         # Reduced from 16 to 4
+num_microbatches: 2   # Use gradient accumulation to maintain effective batch size
+max_steps: 2000
+log_freq: 1
+
+# Loss weighting
+first_codebook_weight_multiplier: 100.0
+text_padding_weight: 0.5
+
+# Optimizer configuration
+optim:
+  lr: 2e-6
+  weight_decay: 0.1
+  pct_start: 0.05
+
+# Regularization
+max_norm: 1.0
+
+# Checkpointing
+do_ckpt: true
+ckpt_freq: 100
+save_adapters: true
+num_ckpt_keep: 3
+
+# Evaluation
+do_eval: false
+eval_freq: 100
+
+# System configuration
+seed: 0
+gradient_checkpointing: true
+param_dtype: bfloat16
+
+# Monitoring
+wandb:
+  project: ttt-single-small-batch
+  offline: false
+  run_name: ttt_single_batch4

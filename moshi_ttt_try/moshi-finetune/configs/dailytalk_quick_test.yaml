@@ -1,0 +1,64 @@
+# Quick test configuration for TTT-Moshi validation
+# Minimal settings for fast validation
+
+# Data configuration
+data:
+  train_data: /sise/eliyanac-group/ron_al/daily-talk-contiguous/train/dailytalk_train.jsonl
+  eval_data: /sise/eliyanac-group/ron_al/daily-talk-contiguous/eval/dailytalk_eval.jsonl
+  shuffle: true
+
+# Training run configuration
+run_dir: runs/quick_test_ttt_moshi
+overwrite_run_dir: true
+
+# Model paths
+moshi_paths:
+  hf_repo_id: kyutai/moshiko-pytorch-bf16
+
+# LoRA configuration (for efficiency)
+lora:
+  enable: true
+  rank: 32
+  scaling: 1.0
+  ft_embed: false
+
+# TTT (Test-Time Training) configuration - disabled for quick test
+ttt:
+  enable: false
+  layers: "none"
+  base_lr: 1.0
+  mini_batch_size: 8
+
+# Training parameters (minimal for quick test)
+full_finetuning: false
+duration_sec: 10.0      # Short audio segments
+batch_size: 1           # Single batch
+num_microbatches: 1     # No gradient accumulation
+max_steps: 5            # Just 5 steps for validation
+log_freq: 1             # Log every step
+
+# Loss weighting
+first_codebook_weight_multiplier: 1.0
+text_padding_weight: 0.5
+
+# Optimizer configuration  
+optim:
+  lr: 1e-4
+  weight_decay: 0.01
+  pct_start: 0.1
+
+# Regularization
+max_norm: 1.0
+
+# Checkpointing (disabled for quick test)
+do_ckpt: false
+do_eval: false
+
+# System configuration
+seed: 42
+gradient_checkpointing: false  # Disabled for speed
+param_dtype: float32           # Use float32 for CPU compatibility
+
+# Monitoring (minimal)
+wandb:
+  project: null  # Disable wandb for quick test
