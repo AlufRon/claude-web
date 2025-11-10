@@ -449,6 +449,34 @@ class TTTMLP(TTTBase):
 
 ---
 
+## Training Configuration Issue 🔴
+
+### Additional Finding: Persistent States Enabled By Default
+
+**During training code review, discovered that Issue #4 is ACTIVE by default in training due to configuration.**
+
+**File**: `finetune/args.py:74`
+```python
+@dataclass
+class TTTArgs(Serializable):
+    persistent_states: bool = True  # ← DEFAULT IS TRUE!
+```
+
+**Impact**: All training runs using default configuration have corrupted gradient flow for TTT weights (W1, W2, b1, b2).
+
+**Production config** (`configs/production_ttt_dailytalk.yaml`) does NOT override this, so it inherits `persistent_states=True`.
+
+**Fix**: Change default to `False` for training, or add training mode check in `ttt_layer.py:647`:
+```python
+if hasattr(self, 'persistent_states') and self.persistent_states and not self.training:
+    # Only use persistent states during eval/inference
+```
+
+**See**: `docs/TRAINING_CODE_ANALYSIS.md` for complete training pipeline review.
+
+---
+
 **Analysis Date**: 2025-11-10
 **Verification Status**: All issues code-verified with line-by-line analysis
+**Training Pipeline**: Reviewed - configuration bug found (persistent_states=True by default)
 **Confidence Level**: High (based on direct code reading and comparison with reference implementation)
