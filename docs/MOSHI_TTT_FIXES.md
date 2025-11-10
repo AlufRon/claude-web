@@ -642,6 +642,244 @@ data_loader = FileAwareDataLoader(data_loader, model)
 
 ---
 
+## Issue #5: Cross-File State Contamination 🔴
+
+### Problem Statement
+
+TTT weights persist across file boundaries without reset, causing state from one audio file to contaminate adaptation for subsequent files. This violates the two-loop learning paradigm where the outer loop (optimizer) should learn W_base that generalizes, while the inner loop (TTT) should adapt W_base independently to each file.
+
+**Discovered**: During end-to-end training flow analysis (see `docs/FINAL_VERIFICATION.md`)
+
+**Evidence**:
+- Data pipeline tracks `file_id` and `chunk_index` ✅
+- Training loop completely ignores this information ❌
+- No state reset mechanism exists ❌
+
+### Fix Option A: Quick Fix (Disable persistent_states)
+
+**Same as Issue #4 Quick Fix** - Disabling `persistent_states` prevents cross-file contamination but loses within-file continuity.
+
+**Status**: Not recommended as primary fix (loses too much functionality)
+
+### Fix Option B: Proper Fix (File Boundary Detection)
+
+**Note**: This fix is INTEGRATED with Issue #4 Proper Fix. Both issues require proper state management and should be fixed together.
+
+#### Component 1: State Reset Method (in TTT Layer)
+
+**File**: `moshi_ttt_try/moshi-finetune/moshi_ttt/ttt_layer.py`
+
+Add method to reset TTT states to base weights:
+
+```python
+def reset_ttt_state(self):
+    """Reset TTT states to base weights (for file boundaries)"""
+    if not hasattr(self, 'W1_base'):
+        # Old architecture - no-op
+        return
+
+    # Reset states to base weights
+    with torch.no_grad():
+        if hasattr(self, 'W1_state'):
+            self.W1_state.copy_(self.W1_base)
+        if hasattr(self, 'b1_state'):
+            self.b1_state.copy_(self.b1_base)
+        if hasattr(self, 'W2_state'):
+            self.W2_state.copy_(self.W2_base)
+        if hasattr(self, 'b2_state'):
+            self.b2_state.copy_(self.b2_base)
+```
+
+#### Component 2: File Boundary Detection (in Training Loop)
+
+**File**: `moshi_ttt_try/moshi-finetune/training/train_ttt_production.py`
+
+Add file boundary tracking to training loop:
+
+```python
+# Before training loop (line 230)
+previous_file_id = None
+
+# Inside training loop (after line 239)
+while step < args.max_steps:
+    step += 1
+    step_start = time.time()
+
+    # Get batch
+    batch = next(data_loader)
+    codes = batch.codes.to(device)
+
+    # ✅ NEW: Check for file boundary
+    current_file_id = batch.file_id
+    if current_file_id is not None:
+        if previous_file_id is not None and current_file_id != previous_file_id:
+            # File boundary detected - reset TTT states
+            logger.info(f"File boundary detected: {previous_file_id} → {current_file_id}")
+            reset_ttt_states(model)
+
+        previous_file_id = current_file_id
+
+    # Forward pass
+    optimizer.zero_grad()
+    # ... rest of training loop ...
+
+def reset_ttt_states(model):
+    """Reset TTT states to base weights in all TTT layers"""
+    count = 0
+    for module in model.modules():
+        if hasattr(module, 'reset_ttt_state'):
+            module.reset_ttt_state()
+            count += 1
+    logger.info(f"Reset {count} TTT layers to base weights")
+```
+
+#### Component 3: Logging and Monitoring
+
+Add metrics to track file boundaries and state resets:
+
+```python
+# In training loop logging (around line 306)
+if step % args.log_freq == 0:
+    # Existing logging...
+
+    # NEW: Track file boundaries
+    if hasattr(model, '_ttt_resets_count'):
+        print(f"   TTT state resets: {model._ttt_resets_count}")
+
+# In reset_ttt_states function
+def reset_ttt_states(model):
+    """Reset TTT states to base weights in all TTT layers"""
+    count = 0
+    for module in model.modules():
+        if hasattr(module, 'reset_ttt_state'):
+            module.reset_ttt_state()
+            count += 1
+
+    # Track resets
+    if not hasattr(model, '_ttt_resets_count'):
+        model._ttt_resets_count = 0
+    model._ttt_resets_count += 1
+
+    logger.info(f"Reset {count} TTT layers (total resets: {model._ttt_resets_count})")
+```
+
+### Complete Implementation (Issues #4 + #5 Together)
+
+**Recommended approach**: Fix both Issue #4 and Issue #5 together, as they both require proper state management.
+
+**Architecture changes**:
+1. Separate `W_base` (trainable parameters) from `W_state` (persistent buffers)
+2. Add `reset_ttt_state()` method to reset states to base
+3. Add file boundary detection in training loop
+4. Reset states when file boundary detected
+
+**Data flow after fix**:
+```
+File 1, Chunk 0: W_base → W_state (adapt) → output → loss → ∂loss/∂W_base
+File 1, Chunk 1: W_state (continue) → output → loss → ∂loss/∂W_base
+File 1, Chunk 2: W_state (continue) → output → loss → ∂loss/∂W_base
+
+[File boundary detected] → reset: W_state ← W_base
+
+File 2, Chunk 0: W_base → W_state (fresh adapt) → output → loss → ∂loss/∂W_base
+File 2, Chunk 1: W_state (continue) → output → loss → ∂loss/∂W_base
+```
+
+**Gradients received by optimizer**:
+- Proper per-file adaptation signals
+- No cross-file contamination
+- Clean two-loop learning paradigm
+
+### Testing
+
+**Unit test**:
+```python
+def test_file_boundary_reset():
+    """Verify TTT states reset at file boundaries"""
+    model = load_model_with_ttt(persistent_states=True)
+    batch1 = create_batch(file_id="/data/file1.wav", chunk_index=0)
+    batch2 = create_batch(file_id="/data/file1.wav", chunk_index=1)
+    batch3 = create_batch(file_id="/data/file2.wav", chunk_index=0)
+
+    # Process File 1
+    out1 = model(batch1.codes)
+    W1_after_file1_chunk0 = model.transformer.layers[0].hybrid.W1_state.clone()
+
+    out2 = model(batch2.codes)
+    W1_after_file1_chunk1 = model.transformer.layers[0].hybrid.W1_state.clone()
+
+    # State should have changed (adaptation)
+    assert not torch.allclose(W1_after_file1_chunk0, W1_after_file1_chunk1)
+
+    # File boundary - reset
+    reset_ttt_states(model)
+
+    # Process File 2
+    out3 = model(batch3.codes)
+    W1_after_file2_chunk0 = model.transformer.layers[0].hybrid.W1_state.clone()
+
+    # State should be reset to base (not continue from File 1)
+    W1_base = model.transformer.layers[0].hybrid.W1_base
+    assert torch.allclose(W1_after_file2_chunk0, W1_base, atol=1e-3)
+```
+
+**Integration test**:
+```python
+def test_training_with_file_boundaries():
+    """Verify training handles file boundaries correctly"""
+    model = load_model_with_ttt(persistent_states=True)
+    optimizer = AdamW(model.parameters(), lr=1e-4)
+
+    # Create dataset with 2 files
+    dataset = [
+        create_batch(file_id="/data/file1.wav", chunk_index=0),
+        create_batch(file_id="/data/file1.wav", chunk_index=1),
+        create_batch(file_id="/data/file2.wav", chunk_index=0),  # File boundary
+        create_batch(file_id="/data/file2.wav", chunk_index=1),
+    ]
+
+    previous_file_id = None
+    reset_count = 0
+
+    for batch in dataset:
+        # File boundary detection
+        if previous_file_id and batch.file_id != previous_file_id:
+            reset_ttt_states(model)
+            reset_count += 1
+        previous_file_id = batch.file_id
+
+        # Training step
+        optimizer.zero_grad()
+        output = model(batch.codes)
+        loss = compute_loss(output, batch.codes)
+        loss.backward()
+        optimizer.step()
+
+    # Should have detected 1 file boundary
+    assert reset_count == 1
+```
+
+### Complexity and Impact
+
+**Complexity**: Medium (requires Issue #4 proper fix first)
+- Depends on W_base/W_state separation
+- File boundary detection logic is straightforward
+- Testing requires multi-file dataset
+
+**Impact**: 🔴 Critical
+- Restores proper two-loop learning
+- Prevents cross-file contamination
+- Enables correct per-file adaptation
+- No performance overhead (reset is rare)
+
+**Implementation time**: 1-2 days (including testing)
+
+**Dependencies**:
+- Issue #4 proper fix must be implemented first
+- Requires W_base/W_state architecture
+
+---
+
 ## Implementation Priority
 
 ### Immediate (Week 1)
@@ -660,11 +898,12 @@ data_loader = FileAwareDataLoader(data_loader, model)
 
 ### Short-term (Week 2-3)
 
-3. **Issue #4 Proper Fix (Separate W_base/W_state)** - RECOMMENDED
+3. **Issues #4 + #5 Proper Fix (Separate W_base/W_state + File Boundary Detection)** - RECOMMENDED
    - Complexity: High
-   - Impact: Critical (enables proper persistent state training)
-   - Fix: Implement parameter/buffer separation architecture
-   - Enables: Sequential chunk training with proper gradients
+   - Impact: Critical (enables proper persistent state training + prevents cross-file contamination)
+   - Fix: Implement parameter/buffer separation architecture with file boundary detection
+   - Enables: Sequential chunk training with proper gradients and per-file adaptation
+   - Note: Both issues should be fixed together as they share the same state management architecture
 
 4. **Issue #3 (Batch Size Assertion)** - NICE TO HAVE
    - Complexity: Low
@@ -751,15 +990,15 @@ def migrate_checkpoint(old_checkpoint_path, new_checkpoint_path):
 |-------|----------|------------|----------|----------|
 | #2 Normalization | 🔴 Critical | Low | 15 min | Yes |
 | #4 Quick Fix | 🔴 Critical | Trivial | 5 min | No |
-| #4 Proper Fix | 🟠 High | High | 2-3 days | No (migration) |
+| #4 + #5 Proper Fix | 🔴 Critical | High | 3-4 days | No (migration) |
 | #3 Batch Size | 🟡 Medium | Low | 30 min | No |
 | #1 Option A (Buffer) | 🟡 Medium | Low | 30 min | No |
 | #1 Option B (Chunked) | 🟠 High | High | 2-3 days | Yes |
 
 **Recommended Immediate Action**:
 1. Fix Issue #2 (normalization) - start retraining
-2. Fix Issue #4 quick (disable persistent_states during training)
-3. Plan Issue #4 proper fix (W_base/W_state architecture)
+2. Fix Issues #4 + #5 quick (disable persistent_states during training) - temporarily disables cross-file contamination
+3. Plan Issues #4 + #5 proper fix (W_base/W_state architecture + file boundary detection) - complete solution
 
 ---
 

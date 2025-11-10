@@ -8,14 +8,15 @@
 
 ## Executive Summary
 
-Through deep code analysis, **4 critical issues** have been identified and verified in the Moshi-TTT implementation. These range from architectural limitations to implementation bugs that prevent TTT from functioning correctly.
+Through deep code analysis and end-to-end training flow verification, **5 critical issues** have been identified and verified in the Moshi-TTT implementation. These range from architectural limitations to implementation bugs that prevent TTT from functioning correctly.
 
 | # | Issue | Severity | Type | Status |
 |---|-------|----------|------|--------|
 | **1** | Ring KV Cache Information Loss | 🔴 **Critical** | Architectural | ✅ Verified |
 | **2** | Reconstruction Target Normalization Bug | 🟠 **Major** | Implementation | ✅ Verified |
 | **3** | Batch Size > 1 Incompatibility | 🟡 **Medium** | Implementation | ✅ Verified |
-| **4** | Gradient Flow Corruption | 🟠 **Major** | Implementation | ✅ Verified |
+| **4** | Gradient Flow Corruption | 🔴 **Critical** | Implementation | ✅ Verified |
+| **5** | Cross-File State Contamination | 🔴 **Critical** | Implementation | ✅ Verified |
 
 ---
 
@@ -570,6 +571,262 @@ class TTTMLP(TTTBase):
 - ✅ `moshi_ttt_try/moshi-finetune/moshi_ttt/models/ssm/ops/ttt_mlp.py` (Reconstruction target)
 - ✅ `ttt-video-dit/ttt/models/ssm/ttt_layer.py` (Comparison reference)
 - ✅ `ttt-video-dit/ttt/models/cogvideo/dit.py` (Comparison reference)
+
+---
+
+## Issue #5: Cross-File State Contamination 🔴
+
+### The Problem
+
+**TTT weights persist across file boundaries without reset, causing state from one audio file to contaminate the adaptation for subsequent files with different speakers and acoustic conditions.**
+
+### Discovery
+
+This issue was discovered during comprehensive end-to-end training flow analysis (see `docs/FINAL_VERIFICATION.md`). Despite the data pipeline correctly tracking file boundaries, the training loop completely ignores this information.
+
+### Code Evidence
+
+#### 1. Data Pipeline Tracks File Boundaries ✅
+
+**File**: `moshi_ttt_try/moshi-finetune/finetune/data/interleaver.py:305-315`
+
+```python
+# Track file_id and chunk_index for continuous RoPE
+file_id = path  # Use path as unique file identifier
+chunk_index = int(start_sec / self.duration_sec)  # Calculate chunk position
+
+# Update chunk tracker (for sequential tracking if needed)
+if file_id not in self._file_chunk_map:
+    self._file_chunk_map[file_id] = 0
+else:
+    self._file_chunk_map[file_id] += 1
+
+return Sample(codes, data.get("text_conditions", None),
+              file_id=file_id, chunk_index=chunk_index)
+```
+
+**File**: `moshi_ttt_try/moshi-finetune/finetune/data/interleaver.py:17-22`
+
+```python
+@dataclass
+class Sample:
+    codes: torch.Tensor
+    condition_attributes: ConditionAttributes | None = None
+    file_id: str | None = None  # ← Track source file
+    chunk_index: int | None = None  # ← Track chunk position within file
+```
+
+**File**: `moshi_ttt_try/moshi-finetune/finetune/data/interleaver.py:26-30`
+
+```python
+@dataclass
+class Batch:
+    codes: torch.Tensor
+    condition_attributes: list[ConditionAttributes] | None = None
+    file_id: str | None = None  # ← Available in batch
+    chunk_index: int | None = None
+```
+
+#### 2. Sequential Processing Confirmed ✅
+
+**File**: `moshi_ttt_try/moshi-finetune/finetune/data/dataset.py:250-261`
+
+```python
+def get_dataset_iterator(...):
+    while True:
+        for jsonl_file in source.jsonl_files:
+            dataset = sphn.dataset_jsonl(...)
+
+            if shuffle_at_epoch:  # FALSE for TTT training!
+                dataset = dataset.shuffle(...)
+            else:
+                # SEQUENTIAL processing - chunks from same file are consecutive
+                dataset = dataset.seq(skip=rank, step_by=world_size)
+
+            for sample in dataset:
+                wav = sample["data"][..., : sample["unpadded_len"]]
+                result = instruct_tokenizer(wav, sample["start_time_sec"], sample["path"])
+                if result is not None:
+                    yield result
+```
+
+**Processing order**:
+```
+File1_chunk0 → File1_chunk1 → File1_chunk2 → ... → File1_chunkN →
+File2_chunk0 → File2_chunk1 → ...  ← NEW FILE, but no state reset!
+File3_chunk0 → ...
+```
+
+#### 3. Training Loop Ignores File Boundaries ❌
+
+**File**: `moshi_ttt_try/moshi-finetune/training/train_ttt_production.py:234-298`
+
+```python
+while step < args.max_steps:
+    step += 1
+    step_start = time.time()
+
+    # Get batch
+    batch = next(data_loader)  # ← Contains file_id and chunk_index
+    codes = batch.codes.to(device)
+
+    # ❌ NO file_id check!
+    # ❌ NO state reset logic!
+    # batch.file_id is completely ignored!
+
+    # Forward pass
+    optimizer.zero_grad()
+
+    # ... condition tensors setup ...
+
+    # Model forward pass
+    for mb_idx in range(args.num_microbatches):
+        output = model(codes=codes, condition_tensors=condition_tensors)
+        # ↑ TTT weights carry over from previous batch
+        # ↑ Even if previous batch was from a different file!
+
+        # Compute losses
+        text_loss = compute_loss_with_mask(...)
+        audio_loss = compute_loss_with_mask(...)
+        mb_loss = text_loss + audio_loss
+        mb_loss.backward()
+
+    # Optimizer step
+    torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_norm)
+    optimizer.step()
+    scheduler.step()
+```
+
+**Verification**: Grep search for `file_id` usage in training code:
+```bash
+grep -r "batch\.file_id\|file_id" moshi_ttt_try/moshi-finetune/training/train_ttt_production.py
+# Result: No matches found!
+```
+
+#### 4. No State Reset Mechanism Exists ❌
+
+**Verification**: Grep search for state reset logic:
+```bash
+grep -r "reset.*ttt\|reset.*state\|streaming_forever" moshi_ttt_try/moshi-finetune/training/
+# Result: No matches found!
+```
+
+### Contamination Flow
+
+**Iteration Trace** (with 2 files, each with 3 chunks):
+
+```
+Training Step 1: File 1, Chunk 0 (0-10s)
+├─ TTT weights: W_init → W1_0
+└─ State: Adapted to File 1, Chunk 0
+
+Training Step 2: File 1, Chunk 1 (10-20s)
+├─ TTT weights: W1_0 → W1_1 (continues from previous)
+└─ State: Adapted to File 1, Chunks 0-1 ✅ CORRECT (same file)
+
+Training Step 3: File 1, Chunk 2 (20-30s)
+├─ TTT weights: W1_1 → W1_2 (continues from previous)
+└─ State: Adapted to File 1, Chunks 0-2 ✅ CORRECT (same file)
+
+Training Step 4: File 2, Chunk 0 (0-10s) ← NEW FILE!
+├─ TTT weights: W1_2 → W2_0 (continues from File 1!)
+└─ State: File 2 starts with File 1's final state ❌ WRONG!
+    ↳ Should reset to W_base and start fresh
+    ↳ Instead carries File 1's adaptations into File 2
+
+Training Step 5: File 2, Chunk 1 (10-20s)
+├─ TTT weights: W2_0 → W2_1 (contaminated by File 1)
+└─ State: File 2 adaptation corrupted by File 1 ❌ WRONG!
+
+Training Step 6: File 2, Chunk 2 (20-30s)
+├─ TTT weights: W2_1 → W2_2 (contaminated by File 1)
+└─ State: File 2 fully processed, but initial adaptation was wrong ❌ WRONG!
+```
+
+### Impact on Two-Loop Learning Paradigm
+
+The TTT two-loop paradigm requires:
+
+| Loop | Purpose | Current Behavior | Expected Behavior |
+|------|---------|------------------|-------------------|
+| **Outer Loop** (Optimizer) | Learn W_base that generalizes across files | Receives contaminated gradients | Should receive per-file adaptation signals |
+| **Inner Loop** (TTT) | Adapt W_base to specific file | Carries state across files | Should reset at file boundaries |
+
+**Current (BROKEN)**:
+```
+File 1: W_base → W_adapt_file1 (good)
+File 2: W_adapt_file1 → W_adapt_file2 (contaminated!)
+File 3: W_adapt_file2 → W_adapt_file3 (contaminated!)
+
+Optimizer sees: W_adapt_file3 - W_base (WRONG!)
+Should see: (W_adapt_file1 - W_base) + (W_adapt_file2 - W_base) + (W_adapt_file3 - W_base)
+```
+
+**Expected (CORRECT)**:
+```
+File 1: W_base → W_adapt_file1 (reset) → W_base
+File 2: W_base → W_adapt_file2 (reset) → W_base
+File 3: W_base → W_adapt_file3 (reset) → W_base
+
+Optimizer receives: Per-file adaptation gradients
+Learns: W_base that works well as starting point for all files
+```
+
+### Real-World Impact
+
+**Scenario**: Training on diverse dataset
+
+| File | Content | Expected TTT Behavior | Actual Behavior | Impact |
+|------|---------|----------------------|-----------------|--------|
+| File 1 | Male speaker, noisy | Adapt to male voice + noise reduction | ✅ Correct | ✅ Good |
+| File 2 | Female speaker, quiet | Reset and adapt to female voice | ❌ Continues from File 1 | 🔴 Contaminated |
+| File 3 | Child speaker, music | Reset and adapt to child + music | ❌ Continues from File 2 | 🔴 Contaminated |
+| File 4 | Accented speech | Reset and adapt to accent | ❌ Continues from File 3 | 🔴 Contaminated |
+
+**Consequences**:
+1. **Incorrect adaptation**: File 2 starts with weights optimized for File 1's male speaker
+2. **Slow convergence**: TTT must "unlearn" File 1 before adapting to File 2
+3. **Degraded performance**: Especially on first chunks of new files
+4. **Training instability**: Optimizer receives wrong gradient signals
+5. **Violated assumptions**: Two-loop paradigm requires independent per-example adaptation
+
+### Comparison with Video-DiT
+
+**Video-DiT** (from `ttt-video-dit/ttt/models/ssm/ttt_layer.py:404-473`):
+
+```python
+def ttt(self, inputs):
+    # NO persistent_states!
+    # Each forward pass is independent
+
+    B, S, H, P, C = inputs.shape
+
+    # Initialize from base parameters (always fresh)
+    W1_states = torch.tile(self.W1.unsqueeze(0), dims=(B, 1, 1, 1, 1))
+
+    # Run TTT inner loop
+    XQW_batch = ttt_mlp(inputs, ..., W1_states, ...)
+
+    # NO state copying - states discarded after forward
+    return XQW_batch  # Return output only
+```
+
+**Key difference**: Video-DiT processes complete videos in batches, with no cross-video state persistence. Each video gets independent TTT adaptation.
+
+**Moshi-TTT**: Sequential chunks from long files NEED persistence within files, but SHOULD reset between files.
+
+### Why This Wasn't Caught Earlier
+
+1. **Data pipeline is correct**: File tracking works perfectly
+2. **Information is available**: `batch.file_id` and `batch.chunk_index` are present
+3. **Silent failure**: No error or warning - state just carries over silently
+4. **Training still runs**: Loss decreases (but suboptimally)
+5. **Requires end-to-end analysis**: Only visible when tracing complete data→training flow
+
+### Related Issues
+
+- **Issue #4** (Gradient Flow Corruption): Both issues relate to improper state management
+- Fixing both together is recommended (see `docs/MOSHI_TTT_FIXES.md`)
 
 ---
 
